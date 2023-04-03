@@ -77,13 +77,11 @@ def tfrecords_pipeline(
         num_group_ppls (int): number of people for mini-batch
     """
     def decode_tfrecord(tfrecord):
-        print(tfrecord)
         tfrecord = parser(tfrecord)
         return tfrecord
     def mapping_prons(dataset):
         dataset = tf.data.Dataset.from_tensor_slices(dataset)
         dataset = dataset.shuffle(num_noisetype)
-        print(dataset)
         dataset = tf.data.TFRecordDataset(dataset)
         return dataset
     def mapping_ppl(dataset):
@@ -117,7 +115,7 @@ if __name__ == "__main__":
     num_noisetype = 3 # pylint: disable=invalid-name
     num_group_ppls = 2 # pylint: disable=invalid-name
     dim_feat=2
-    timesteps = 3gi
+    timesteps = 3
     os.makedirs("fake_tfrecord", exist_ok=True)
 
     for ppl in range(1,5):
