@@ -117,7 +117,7 @@ if __name__ == "__main__":
     num_noisetype = 3 # pylint: disable=invalid-name
     num_group_ppls = 2 # pylint: disable=invalid-name
     dim_feat=2
-    timesteps = 6
+    timesteps = 3gi
     os.makedirs("fake_tfrecord", exist_ok=True)
 
     for ppl in range(1,5):
