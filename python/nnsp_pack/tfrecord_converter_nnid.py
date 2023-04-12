@@ -1,120 +1,152 @@
 """
-Correlation function for speaker verification
+Speaker verification pipeline
 """
-import numpy as np
 import tensorflow as tf
-def get_corr(
-        feats,
-        num_group_ppls,
+import numpy as np
+import os
+def make_tfrecord(  fname,
+                    feature):
+    """
+    Make tfrecord
+    """
+    timesteps, dim_feat = feature.shape
+    feature = feature.reshape([-1])
+    with tf.io.TFRecordWriter(fname) as writer:
+        timesteps   = tf.train.Feature(int64_list = tf.train.Int64List(value = [timesteps]))
+        dim_feat    = tf.train.Feature(int64_list = tf.train.Int64List(value = [dim_feat]))
+        feature     = tf.train.Feature(float_list = tf.train.FloatList(value = feature))
+
+        context = tf.train.Features(feature = {
+                "timesteps" : timesteps,
+                "dim_feat"  : dim_feat,
+            })
+
+        feature_lists = tf.train.FeatureLists(feature_list={
+                "feature": tf.train.FeatureList(feature = [feature]),
+            })
+
+        seq_example = tf.train.SequenceExample( # context and feature_lists
+            context = context,
+            feature_lists = feature_lists,
+        )
+
+        serialized = seq_example.SerializeToString()
+        writer.write(serialized)
+
+def parser(example_proto):
+    """
+    Create a description of the features.
+    """
+    context_features = {
+        'timesteps' : tf.io.FixedLenFeature([], tf.int64),
+        'dim_feat'  : tf.io.FixedLenFeature([], tf.int64),
+    }
+
+    sequence_features = {
+        'feature'      : tf.io.VarLenFeature(tf.float32),
+    }
+    context_parsed, seq_parsed = tf.io.parse_single_sequence_example(
+            example_proto,
+            context_features  = context_features,
+            sequence_features = sequence_features,
+                                        )
+
+    dim_feat = tf.cast(context_parsed['dim_feat'], tf.int32)
+
+    feature = tf.sparse.to_dense(seq_parsed['feature'])
+    feature = tf.reshape(feature, [-1, dim_feat])
+
+
+    mask = feature[:,0] * 0 + 1
+    mask = mask[..., tf.newaxis]
+    mask = tf.cast(mask, tf.float32)
+
+    return feature, mask
+
+def tfrecords_pipeline(
+        fnames,
         num_prons,
-        eps = 0):
-    """
-    Correlation function
-    """
-    mat_corr = np.zeros((num_group_ppls*num_prons,num_group_ppls), dtype=np.float32)
-    for i in range(num_group_ppls):
-        center = np.sum(feats[i*num_prons:num_prons * (i+1),:], axis=0)
-        # print(center)
-        for j in range(num_group_ppls):
-            for k in range(num_prons):
-                feat = feats[k + j * num_prons,:]
-                if i == j:
-                    center0 = (center - feat) / (num_prons - 1)
-                else:
-                    center0 = center / num_prons
-                norm_feat = np.sum(feat**2)
-                norm_center0 = np.sum(center0**2)
+        num_noisetype,
+        num_group_ppls):
+    """_summary_
 
-                corr = np.matmul(feat, center0)
-                corr = corr / (np.sqrt(norm_feat * norm_center0) + eps)
-                mat_corr[k + j * num_prons, i] = corr
-    return mat_corr
+    Args:
+        fnames (string): filenames
+        num_prons (int): number of pronounciations for each person
+        num_noisetype (int): number of noise types
+        num_group_ppls (int): number of people for mini-batch
+    """
+    def decode_tfrecord(tfrecord):
+        print(tfrecord)
+        tfrecord = parser(tfrecord)
+        return tfrecord
+    def mapping_prons(dataset):
+        dataset = tf.data.Dataset.from_tensor_slices(dataset)
+        dataset = dataset.shuffle(num_noisetype)
+        print(dataset)
+        dataset = tf.data.TFRecordDataset(dataset)
+        return dataset
+    def mapping_ppl(dataset):
+        dataset = tf.data.Dataset.from_tensor_slices(dataset)
+        dataset = dataset.interleave(
+            mapping_prons,
+            cycle_length=num_prons,
+            block_length=1,
+            deterministic=True,
+            num_parallel_calls = tf.data.AUTOTUNE)
+        return dataset
+    dataset = tf.data.Dataset.from_tensor_slices(fnames)
+    dataset = dataset.shuffle(len(fnames), reshuffle_each_iteration=True)
+    dataset = dataset.interleave(
+        mapping_ppl,
+        cycle_length=len(fnames),
+        block_length=num_prons,
+        deterministic=True,
+        num_parallel_calls = tf.data.AUTOTUNE)
+    dataset = dataset.map(
+                decode_tfrecord,
+                num_parallel_calls = tf.data.AUTOTUNE,
+                deterministic = True)
+    dataset = dataset.batch(num_group_ppls*num_prons)
+    dataset = dataset.prefetch(1)
+    iterator = iter(dataset)
+    return iterator, dataset
 
-def get_corr_fast(
-        feats,
-        diag,
-        num_group_ppls,
+if __name__ == "__main__":
+    num_prons = 4 # pylint: disable=invalid-name
+    num_noisetype = 3 # pylint: disable=invalid-name
+    num_group_ppls = 2 # pylint: disable=invalid-name
+    dim_feat=2
+    timesteps = 6
+    os.makedirs("fake_tfrecord", exist_ok=True)
+
+    for ppl in range(1,5):
+        for sent in range(1, num_prons+1):
+            for ntype in range(1, num_noisetype+1):
+                fname = f"fake_tfrecord/id{ppl}_sent{sent}_noise{ntype}.tfrecord"
+                feat = np.ones((dim_feat, timesteps), dtype=np.float32) * (ppl+0.1*sent+0.01*ntype)
+                make_tfrecord(fname, feat)
+    fnames =  [[['fake_tfrecord/id1_sent1_noise1.tfrecord', 'fake_tfrecord/id1_sent1_noise2.tfrecord', 'fake_tfrecord/id1_sent1_noise3.tfrecord'],
+                ['fake_tfrecord/id1_sent2_noise1.tfrecord', 'fake_tfrecord/id1_sent2_noise2.tfrecord', 'fake_tfrecord/id1_sent2_noise3.tfrecord'],
+                ['fake_tfrecord/id1_sent3_noise1.tfrecord', 'fake_tfrecord/id1_sent3_noise2.tfrecord', 'fake_tfrecord/id1_sent3_noise3.tfrecord'],
+                ['fake_tfrecord/id1_sent4_noise1.tfrecord', 'fake_tfrecord/id1_sent4_noise2.tfrecord', 'fake_tfrecord/id1_sent4_noise3.tfrecord']], # 1st person
+               [['fake_tfrecord/id2_sent1_noise1.tfrecord', 'fake_tfrecord/id2_sent1_noise2.tfrecord', 'fake_tfrecord/id2_sent1_noise3.tfrecord'],
+                ['fake_tfrecord/id2_sent2_noise1.tfrecord', 'fake_tfrecord/id2_sent2_noise2.tfrecord', 'fake_tfrecord/id2_sent2_noise3.tfrecord'],
+                ['fake_tfrecord/id2_sent3_noise1.tfrecord', 'fake_tfrecord/id2_sent3_noise2.tfrecord', 'fake_tfrecord/id2_sent3_noise3.tfrecord'],
+                ['fake_tfrecord/id2_sent4_noise1.tfrecord', 'fake_tfrecord/id2_sent4_noise2.tfrecord', 'fake_tfrecord/id2_sent4_noise3.tfrecord']], # 2st person
+               [['fake_tfrecord/id3_sent1_noise1.tfrecord', 'fake_tfrecord/id3_sent1_noise2.tfrecord', 'fake_tfrecord/id3_sent1_noise3.tfrecord'],
+                ['fake_tfrecord/id3_sent2_noise1.tfrecord', 'fake_tfrecord/id3_sent2_noise2.tfrecord', 'fake_tfrecord/id3_sent2_noise3.tfrecord'],
+                ['fake_tfrecord/id3_sent3_noise1.tfrecord', 'fake_tfrecord/id3_sent3_noise2.tfrecord', 'fake_tfrecord/id3_sent3_noise3.tfrecord'],
+                ['fake_tfrecord/id3_sent4_noise1.tfrecord', 'fake_tfrecord/id3_sent4_noise2.tfrecord', 'fake_tfrecord/id3_sent4_noise3.tfrecord']], # 3st person
+               [['fake_tfrecord/id4_sent1_noise1.tfrecord', 'fake_tfrecord/id4_sent1_noise2.tfrecord', 'fake_tfrecord/id4_sent1_noise3.tfrecord'],
+                ['fake_tfrecord/id4_sent2_noise1.tfrecord', 'fake_tfrecord/id4_sent2_noise2.tfrecord', 'fake_tfrecord/id4_sent2_noise3.tfrecord'],
+                ['fake_tfrecord/id4_sent3_noise1.tfrecord', 'fake_tfrecord/id4_sent3_noise2.tfrecord', 'fake_tfrecord/id4_sent3_noise3.tfrecord'],
+                ['fake_tfrecord/id4_sent4_noise1.tfrecord', 'fake_tfrecord/id4_sent4_noise2.tfrecord', 'fake_tfrecord/id4_sent4_noise3.tfrecord']]] # 4st person
+    iter, dataset = tfrecords_pipeline(
+        fnames,
         num_prons,
-        eps = 0.0):
-    """
-    Fast Correlation function
-    """
-    # print(f"feats: {feats}")
-    ones_1xnum_group_ppls = tf.ones((1,num_group_ppls), dtype=tf.float32)
-    ones_sentsx1 = tf.ones((num_group_ppls * num_prons,1), dtype=tf.float32)
-    centers = tf.matmul(tf.transpose(feats),diag)
-    # print(f"centers {centers}")
-    mat_corr = tf.matmul(feats, centers)
-    norm2_feat = tf.reduce_sum(feats**2, axis=-1)
-    norm2_feat = tf.reshape(norm2_feat, (num_group_ppls * num_prons,-1))
-    norm2_feat = tf.matmul(norm2_feat, ones_1xnum_group_ppls) * diag
-    mat_corr = mat_corr - norm2_feat
-    # print(f"eps: {eps}")
-    # print(f"mat_cor: {mat_corr}")
-
-    scale = tf.ones(
-        (num_group_ppls * num_prons,num_group_ppls),
-        dtype=tf.float32) * num_prons - diag
-    scale = 1/scale
-    mat_corr = mat_corr * scale
-    # print(scale)
-    norm_centers = tf.reduce_sum(centers**2, axis=0)
-    norm_centers = tf.reshape(norm_centers, (-1,num_group_ppls))
-
-    norm_centers = tf.matmul(
-        ones_sentsx1,
-        norm_centers) * (1 - diag)
-    # print(f"norm_centers: {norm_centers}")
-
-    norm_centers_diag = tf.transpose(tf.matmul(centers, tf.transpose(diag)))
-    # print(norm_centers_diag.shape)
-    norm_centers_diag = tf.reduce_sum((norm_centers_diag - feats)**2, axis=-1)
-    norm_centers_diag = tf.reshape(norm_centers_diag, (num_group_ppls * num_prons,1))
-    norm_centers_diag = tf.matmul(
-        norm_centers_diag,
-        ones_1xnum_group_ppls) * diag
-    # print(norm_centers_diag)
-    norm_centers = (norm_centers + norm_centers_diag) * (scale**2)
-    # print(norm_centers)
-    norm_feats = tf.reduce_sum(feats**2, axis=-1)
-    norm_feats = tf.reshape(norm_feats, (num_group_ppls * num_prons,1))
-    norm_feats = tf.matmul(norm_feats, ones_1xnum_group_ppls)
-    # print(norm_feats)
-    mat_corr = mat_corr / (tf.sqrt(norm_centers * norm_feats) + eps)
-    # print(mat_corr.numpy())
-    return mat_corr
-def gen_diag_nnid(num_group_ppls, num_prons):
-    """ 
-    Generate diag for nnid
-    """
-    return tf.constant(np.kron(np.eye(num_group_ppls), np.ones((num_prons,1))), dtype=np.float32)
-if __name__=="__main__":
-    NUM_GROUP_PPLS = 3
-    NUM_PRONS = 4
-    DIM_FEAT = 6
-    EPS=10**-8
-    DIAG = gen_diag_nnid(NUM_GROUP_PPLS, NUM_PRONS)
-    # print(diag)
-
-    feats = tf.constant(np.random.randn(NUM_GROUP_PPLS * NUM_PRONS, DIM_FEAT), dtype=np.float32)
-    mat= get_corr_fast(
-        feats,
-        DIAG,
-        NUM_GROUP_PPLS,
-        NUM_PRONS,
-        eps = EPS).numpy()
-
-    mat_ref = get_corr(
-        feats.numpy(),
-        NUM_GROUP_PPLS,
-        NUM_PRONS,
-        eps=EPS)
-
-    print("corr:")
-    print(mat)
-    print("corr: ref")
-    print(mat_ref)
-
-    print("err")
-    print(mat-mat_ref)
-    
+        num_noisetype,
+        num_group_ppls)
+    for d in dataset:
+        print(d[0].numpy())
+        break
