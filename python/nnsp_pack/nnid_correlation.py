@@ -3,18 +3,19 @@ Correlation function for speaker verification
 """
 import numpy as np
 import tensorflow as tf
+
 def get_corr(
         feats,
-        diag,
         num_group_ppls,
-        num_prons):
+        num_prons,
+        eps = 0):
     """
     Correlation function
     """
     mat_corr = np.zeros((num_group_ppls*num_prons,num_group_ppls), dtype=np.float32)
     for i in range(num_group_ppls):
         center = np.sum(feats[i*num_prons:num_prons * (i+1),:], axis=0)
-        # print(center)
+        print(center)
         for j in range(num_group_ppls):
             for k in range(num_prons):
                 feat = feats[k + j * num_prons,:]
@@ -26,7 +27,7 @@ def get_corr(
                 norm_center0 = np.sum(center0**2)
 
                 corr = np.matmul(feat, center0)
-                corr = corr / np.sqrt(norm_feat * norm_center0)
+                corr = corr / (np.sqrt(norm_feat * norm_center0) + eps)
                 mat_corr[k + j * num_prons, i] = corr
     return mat_corr
 
@@ -34,7 +35,8 @@ def get_corr_fast(
         feats,
         diag,
         num_group_ppls,
-        num_prons):
+        num_prons,
+        eps = 0):
     """
     Fast Correlation function
     """
@@ -79,32 +81,43 @@ def get_corr_fast(
     norm_feats = tf.reshape(norm_feats, (num_group_ppls * num_prons,1))
     norm_feats = tf.matmul(norm_feats, ones_1xnum_group_ppls)
     # print(norm_feats)
-    mat_corr = mat_corr / tf.sqrt(norm_centers * norm_feats)
+    mat_corr = mat_corr / (tf.sqrt(norm_centers * norm_feats) + eps)
     # print(mat_corr.numpy())
     return mat_corr
 
-if __name__=="__main__":
-    num_group_ppls = 3
-    num_prons = 4
-    dim_feat = 6
+def gen_nnid_diag(
+        num_group_ppls,
+        num_prons):
+    """
+    Generate diag for nnid
+    """
     diag = tf.constant(np.kron(np.eye(num_group_ppls), np.ones((num_prons,1))), dtype=np.float32)
-    # print(diag)
+    return diag
 
-    feats = tf.constant(np.random.randn(num_group_ppls * num_prons, dim_feat), dtype=np.float32)
+if __name__=="__main__":
+    NUM_GROUP_PPLS = 3
+    NUM_PRONS = 4
+    DIM_FEAT = 6
+    eps = 0
+    FEATS = tf.constant(np.random.randn(NUM_GROUP_PPLS * NUM_PRONS, DIM_FEAT), dtype=np.float32)
+    DIAG = gen_nnid_diag(NUM_GROUP_PPLS, NUM_PRONS)
+
     mat= get_corr_fast(
-        feats,
-        diag,
-        num_group_ppls,
-        num_prons).numpy()
+        tf.identity(FEATS),
+        DIAG,
+        NUM_GROUP_PPLS,
+        NUM_PRONS,
+        eps=eps).numpy()
     mat_ref = get_corr(
-        feats,
-        diag,
-        num_group_ppls,
-        num_prons)
-    print("corr:")
-    print(mat)
-    print("corr: ref")
-    print(mat_ref)
+        FEATS.numpy(),
+        NUM_GROUP_PPLS,
+        NUM_PRONS,
+        eps=eps)
+    # print("corr:")
+    # print(mat)
+    
+    # print("corr ref:")
+    # print(mat_ref)
 
     print("err")
     print(mat-mat_ref)

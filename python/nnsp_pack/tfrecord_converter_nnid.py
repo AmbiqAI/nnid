@@ -5,9 +5,9 @@ import numpy as np
 import tensorflow as tf
 def get_corr(
         feats,
-        diag,
         num_group_ppls,
-        num_prons):
+        num_prons,
+        eps = 0):
     """
     Correlation function
     """
@@ -26,7 +26,7 @@ def get_corr(
                 norm_center0 = np.sum(center0**2)
 
                 corr = np.matmul(feat, center0)
-                corr = corr / np.sqrt(norm_feat * norm_center0)
+                corr = corr / (np.sqrt(norm_feat * norm_center0) + eps)
                 mat_corr[k + j * num_prons, i] = corr
     return mat_corr
 
@@ -34,7 +34,8 @@ def get_corr_fast(
         feats,
         diag,
         num_group_ppls,
-        num_prons):
+        num_prons,
+        eps = 0.0):
     """
     Fast Correlation function
     """
@@ -44,10 +45,10 @@ def get_corr_fast(
     centers = tf.matmul(tf.transpose(feats),diag)
     # print(f"centers {centers}")
     mat_corr = tf.matmul(feats, centers)
-    eps = tf.reduce_sum(feats**2, axis=-1)
-    eps = tf.reshape(eps, (num_group_ppls * num_prons,-1))
-    eps = tf.matmul(eps, ones_1xnum_group_ppls) * diag
-    mat_corr = mat_corr - eps
+    norm2_feat = tf.reduce_sum(feats**2, axis=-1)
+    norm2_feat = tf.reshape(norm2_feat, (num_group_ppls * num_prons,-1))
+    norm2_feat = tf.matmul(norm2_feat, ones_1xnum_group_ppls) * diag
+    mat_corr = mat_corr - norm2_feat
     # print(f"eps: {eps}")
     # print(f"mat_cor: {mat_corr}")
 
@@ -79,28 +80,36 @@ def get_corr_fast(
     norm_feats = tf.reshape(norm_feats, (num_group_ppls * num_prons,1))
     norm_feats = tf.matmul(norm_feats, ones_1xnum_group_ppls)
     # print(norm_feats)
-    mat_corr = mat_corr / tf.sqrt(norm_centers * norm_feats)
+    mat_corr = mat_corr / (tf.sqrt(norm_centers * norm_feats) + eps)
     # print(mat_corr.numpy())
     return mat_corr
-
+def gen_diag_nnid(num_group_ppls, num_prons):
+    """ 
+    Generate diag for nnid
+    """
+    return tf.constant(np.kron(np.eye(num_group_ppls), np.ones((num_prons,1))), dtype=np.float32)
 if __name__=="__main__":
-    num_group_ppls = 3
-    num_prons = 4
-    dim_feat = 6
-    diag = tf.constant(np.kron(np.eye(num_group_ppls), np.ones((num_prons,1))), dtype=np.float32)
+    NUM_GROUP_PPLS = 3
+    NUM_PRONS = 4
+    DIM_FEAT = 6
+    EPS=10**-8
+    DIAG = gen_diag_nnid(NUM_GROUP_PPLS, NUM_PRONS)
     # print(diag)
 
-    feats = tf.constant(np.random.randn(num_group_ppls * num_prons, dim_feat), dtype=np.float32)
+    feats = tf.constant(np.random.randn(NUM_GROUP_PPLS * NUM_PRONS, DIM_FEAT), dtype=np.float32)
     mat= get_corr_fast(
         feats,
-        diag,
-        num_group_ppls,
-        num_prons).numpy()
+        DIAG,
+        NUM_GROUP_PPLS,
+        NUM_PRONS,
+        eps = EPS).numpy()
+
     mat_ref = get_corr(
-        feats,
-        diag,
-        num_group_ppls,
-        num_prons)
+        feats.numpy(),
+        NUM_GROUP_PPLS,
+        NUM_PRONS,
+        eps=EPS)
+
     print("corr:")
     print(mat)
     print("corr: ref")
