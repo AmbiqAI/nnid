@@ -12,53 +12,34 @@ def get_power(data):
     """Calculate power of data"""
     return np.mean(data**2)
 
-def add_noise(data, noise, snr_db, stime, etime,
+def add_noise(data0, noise, snr_db, stime, etime,
               return_all=False,
-              snr_dB_improved = None,
-              rir = None):
+              amp_min = 0.01,
+              amp_max = 0.95):
     """Synthesize noise and speech"""
-    noise_reverb = 0
-    if rir is not None:
-        idx_late_reverb = np.minimum(
-            np.where(np.abs(rir).max() == rir)[0][0] + 200,
-            rir.size-1)
-        if 0:
-            rir_e = rir.copy()
-            rir_e[idx_late_reverb:] = 0
-            speech_reverb = np.convolve(data, rir,'same')
-            speech = np.convolve(data, rir_e, 'same')
-            noise_reverb = speech_reverb - speech
-            noise = noise + noise_reverb
-            target = speech
-        else:
-            speech_reverb = np.convolve(data, rir, 'same')
-            target = speech_reverb
-    else:
-        target = data.copy()
-
-    pw_target = get_power(target[stime:etime])
+    pw_data = get_power(data0[stime:etime])
     pw_noise = get_power(noise)
     snr = 10**(snr_db/10)
-    if pw_target != 0:
-        target = target / np.sqrt(pw_target)
-        noise_reverb = noise_reverb / np.sqrt(pw_target)
+    if pw_data != 0:
+        data = data0 / np.sqrt(pw_data)
+    else:
+        data = data0
     if pw_noise != 0 and snr != 0:
         noise = noise / np.sqrt(pw_noise) / np.sqrt(snr)
-    noise = noise + noise_reverb
-
-    output = target + noise
+    output = data + noise
     max_val = np.abs(output).max()
-    prob = np.random.uniform(0.05, 0.95, 1)
+    prob = np.random.uniform(amp_min, amp_max, 1)
+
     gain    = prob / (max_val + 10**-5)
     output  = output * gain
-    target  = target * gain
+    data    = data   * gain
     noise   = noise  * gain
     # if snr_dB_improved:
     #     gain0 = 10**(snr_dB_improved / 20)
     #     data = data + noise / gain0
-
+    # print(output)
     if return_all:
-        return output, target
+        return output, data
     else:
         return output
 

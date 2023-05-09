@@ -14,26 +14,42 @@ import boto3
 import soundfile as sf
 import sounddevice as sd
 import librosa
+import yaml
+from yaml.loader import SafeLoader
 from nnsp_pack import tfrecord_converter_nnid
 from nnsp_pack.feature_module import FeatureClass, display_stft
 from nnsp_pack import add_noise
 from nnsp_pack import boto3_op
 
-DEBUG = False
+DEBUG = True
 UPLOAD_TFRECORD_S3 = False
 DOWLOAD_DATA = False
-
+MAX_FRAMES = 350
+DELAY_FRAMES = 10
+NUM_SENTS = 7
+NUM_GROUP_PPLS = 64
+NOISE_TYPES = [
+        'ESC-50-MASTER',
+        'wham_noise',
+        "social_noise",
+        'FSD50K',
+        'musan',
+        'traffic' ]
+if DEBUG:
+    SNR_DBS_MIN_MAX = [100]
+else:
+    SNR_DBS_MIN_MAX = [5, 10, 15, 20, 40]
 if UPLOAD_TFRECORD_S3:
     print('uploading tfrecords to s3 will slow down the process')
 S3_BUCKET = "ambiqai-speech-commands-dataset"
 S3_PREFIX = "tfrecords"
 
 params_audio = {
-    'win_size'      : 480,
-    'hop'           : 160,
-    'len_fft'       : 512,
-    'sample_rate'   : 16000,
-    'nfilters_mel'  : 40}
+    'win_size'      : 240,
+    'hop'           : 80,
+    'len_fft'       : 256,
+    'sample_rate'   : 8000,
+    'nfilters_mel'  : 22}
 
 def download_data():
     """
@@ -53,8 +69,8 @@ class FeatMultiProcsClass(multiprocessing.Process):
     to run several processes of feature extraction in parallel
     """
     def __init__(self, id_process,
-                 name, src_list, train_set, ntype,
-                 noise_files, snr_db, success_dict,
+                 name, src_list, train_set, ntypes,
+                 snr_dbs_min_max, success_dict,
                  params_audio_def,
                  num_processes = 8):
 
@@ -72,10 +88,9 @@ class FeatMultiProcsClass(multiprocessing.Process):
                                 sample_rate     = params_audio_def['sample_rate'],
                                 nfilters_mel    = params_audio_def['nfilters_mel'])
 
-        self.train_set                  = train_set
-        self.ntype                      = ntype
-        self.noise_files                = noise_files
-        self.snr_db                     = snr_db
+        self.train_set          = train_set
+        self.ntypes              = ntypes
+        self.snr_dbs_min_max    = snr_dbs_min_max
         self.names=[]
         if DEBUG:
             self.cnt = 0
@@ -90,156 +105,161 @@ class FeatMultiProcsClass(multiprocessing.Process):
 
     def convert_tfrecord(
             self,
-            fnames,
+            ppls,
             id_process):
         """
         convert np array to tfrecord
         """
-        random.shuffle(fnames)
-        for i in range(len(fnames) >> 1):
-            if self.id_process == self.num_processes - 1:
-                print(f"\r{i}/{len(fnames) >> 1}", end="")
-                if i == (len(fnames) >> 1) - 1:
-                    print("\n")
-            success = 1
-            stimes = []
-            etimes = []
-            targets = []
-            speech = np.empty(0)
-            len_sp_last = 0
-            pattern = r'(\.wav$|\.flac$)'
-            for k in range(2):
-                fname = fnames[2*i+k]
-                bks = fname.strip().split(',')
-                wavpath = bks[0]
-                if self.feat_inst.sample_rate==16000:
-                    stime = int(bks[1])         # start time
-                    etime = int(bks[2])         # end time
-                elif self.feat_inst.sample_rate==8000:
-                    stime = int(bks[1]) >> 1         # start time
-                    etime = int(bks[2]) >> 1         # end time
-                if k == 0:
-                    tfrecord = re.sub(pattern, '.tfrecord', re.sub(r'wavs', S3_PREFIX, wavpath))
-                try:
-                    audio, sample_rate = sf.read(wavpath)
-                except :# pylint: disable=bare-except
-                    success = 0
-                    print(f"Reading the {wavpath} fails ")
-                    break
-                else:
-                    if audio.ndim > 1:
-                        audio=audio[:,0]
-                    if sample_rate > self.feat_inst.sample_rate:
-                        audio = librosa.resample(
-                                audio,
-                                orig_sr=sample_rate,
-                                target_sr=self.feat_inst.sample_rate)
+        outlist = [None] * len(ppls)
+        for p, fnames in enumerate(ppls):
+            outlist[p] = [None] * NUM_SENTS
+            random.shuffle(fnames)
+            for i, fname in enumerate(fnames[:NUM_SENTS]):
+                outlist[p][i] = []
+                for ntype in self.ntypes:
+                    ntype0 = re.sub(r'/', '_', ntype)
+                    noise_files_train = f'data/noise_list/train_noiselist_{ntype0}.csv'
+                    noise_files_test = f'data/noise_list/test_noiselist_{ntype0}.csv'
+                    with open(noise_files_train) as file: # pylint: disable=unspecified-encoding
+                        lines = file.readlines()
+                    lines_tr = [line.strip() for line in lines]
 
-                    elif sample_rate < self.feat_inst.sample_rate:
-                        print(f"{wavpath}: sampling rate < target fs={self.feat_inst.sample_rate}") # pylint: disable=line-too-long
+                    with open(noise_files_test) as file: # pylint: disable=unspecified-encoding
+                        lines = file.readlines()
+                    lines_te = [line.strip() for line in lines]
+                    noise_files = { 'train' : lines_tr,
+                                    'test'  : lines_te}
+                    for snr_db in self.snr_dbs_min_max:
+                        if self.id_process == self.num_processes - 1:
+                            print(f"\r{p:>5}/{len(ppls)} {ntype:<15}, snr_db = {snr_db:>3}", end="")
 
-                    # decorate speech
-                    # take some short time speech
-                    if ((etime-stime) / self.feat_inst.sample_rate) > 3:
-                        pp = np.random.uniform(0,1,1)
-                        if pp <= 0.5:
-                            sec = np.random.uniform(0.5,0.8,1)
-                            etime=stime+int(sec*self.feat_inst.sample_rate)
+                        success = 1
+                        stimes = []
+                        etimes = []
+                        targets = []
+                        speech = np.empty(0)
+                        pattern = r'(\.wav$|\.flac$)'
+
+                        bks = fname.strip().split(',')
+                        wavpath = bks[0]
+                        stime = int(bks[1])         # start time
+                        etime = int(bks[2])         # end time
+                        tfrecord = re.sub(
+                            pattern,
+                            '.tfrecord',
+                            re.sub(r'wavs', S3_PREFIX, wavpath))
+                        try:
+                            audio, sample_rate = sf.read(wavpath)
+                        except :# pylint: disable=bare-except
+                            success = 0
+                            print(f"Reading the {wavpath} fails ")
+                            break
+                        else:
+                            if audio.ndim > 1:
+                                audio=audio[:,0]
+                            if sample_rate > self.feat_inst.sample_rate:
+                                audio = librosa.resample(
+                                        audio,
+                                        orig_sr=sample_rate,
+                                        target_sr=self.feat_inst.sample_rate)
+
+                            elif sample_rate < self.feat_inst.sample_rate:
+                                print(f"{wavpath}: sampling rate < target fs={self.feat_inst.sample_rate}") # pylint: disable=line-too-long
+
+                            # decorate speech
+                            speech = np.zeros((MAX_FRAMES*self.feat_inst.hop,),dtype=np.float32)
+                            speech_orig = audio[stime : etime]
+                            etime = (150 - DELAY_FRAMES)*80
+                            zeros = np.zeros((DELAY_FRAMES*80,), dtype=np.float32)
+                            speech_orig = np.concatenate((speech_orig, zeros))
+                            if len(speech_orig) > 150 * 80:
+                                speech_orig = speech_orig[-150*80:]
+                                speech = speech_orig
+                                stime=0
+                            elif len(speech_orig) < 150 * 80:
+                                stime = 150*80-len(speech_orig)
+                                zeros = np.zeros((stime,), dtype=np.float32)
+                                speech = np.concatenate((zeros, speech_orig))
+                            else:
+                                stime = 0
+                                speech = speech_orig
+                            target = 1
+                            stimes += [stime]
+                            etimes += [etime]
+                            targets += [target]
+
+                        if success:
+                            stimes  = np.array(stimes)
+                            etimes  = np.array(etimes)
+                            targets = np.array(targets)
+                            start_frames    = (stimes / self.params_audio_def['hop']) + 2
+                            start_frames    = start_frames.astype(np.int32)
+                            end_frames      = (etimes / self.params_audio_def['hop']) + 2
+                            end_frames      = end_frames.astype(np.int32)
+                            # add noise to sig
+                            noise = add_noise.get_noise(
+                                        noise_files[self.train_set],
+                                        len(speech),
+                                        self.feat_inst.sample_rate)
+                            audio = add_noise.add_noise(
+                                        speech,
+                                        noise,
+                                        snr_db,
+                                        stime,
+                                        etime,
+                                        return_all = False,
+                                        amp_min=0.01,
+                                        amp_max=0.95)
+                            # feature extraction of sig
+                            spec, _, feat, _ = self.feat_inst.block_proc(audio)
+                            ntype = re.sub('/','_', ntype)
+                            tfrecord = re.sub(  r'\.tfrecord$',
+                                                f'_snr{snr_db}dB_{ntype}.tfrecord',
+                                                tfrecord)
+                            os.makedirs(os.path.dirname(tfrecord), exist_ok=True)
+                            try:
+                                timesteps, _  = feat.shape
+                                width_targets = end_frames - start_frames + 1
+                                tfrecord_converter_nnid.make_tfrecord( # pylint: disable=too-many-function-args
+                                                    tfrecord,
+                                                    feat)
+
+                            except: # pylint: disable=bare-except
+                                print(f"Thread-{id_process}: {i}, processing {tfrecord} failed")
+                            else:
+                                # self.success_dict[self.id_process] += [tfrecord]
+                                outlist[p][i] += [tfrecord]
+                                # since tfrecord file starts: data/tfrecords/speakers/...
+                                # strip the leading "data/" when uploading
+                                if UPLOAD_TFRECORD_S3:
+                                    s3.upload_file(tfrecord, S3_BUCKET, tfrecord)
+                                else:
+                                    pass
                             if DEBUG:
-                                print(sec)
-                    speech0 = audio[stime : etime]
-                    stime = np.random.randint(
-                        self.feat_inst.sample_rate >> 2,
-                        self.feat_inst.sample_rate << 1)
-                    zeros_s = np.zeros(stime)
+                                os.makedirs('test_wavs', exist_ok=True)
+                                sd.play(audio, self.feat_inst.sample_rate)
+                                print(fnames[i])
+                                print(targets)
+                                print(audio)
+                                flabel = np.zeros(spec.shape[0])
+                                tmp = zip(start_frames, end_frames, targets)
+                                for start_frame, end_frame, target in tmp:
+                                    flabel[start_frame: end_frame] = target
+                                display_stft(
+                                    audio, spec.T, feat.T,
+                                    self.feat_inst.sample_rate,
+                                    label_frame=flabel)
 
-                    size_zeros = np.random.randint(
-                        self.feat_inst.sample_rate >> 2,
-                        self.feat_inst.sample_rate << 1)
-                    zeros_e = np.zeros(size_zeros)
-                    etime = len(speech0) + stime
-                    speech0 = np.concatenate((zeros_s, speech0, zeros_e))
+                                sf.write(f'test_wavs/speech_{self.cnt}.wav',
+                                        audio,
+                                        self.feat_inst.sample_rate)
+                                sf.write(f'test_wavs/speech_{self.cnt}_ref.wav',
+                                        speech,
+                                        self.feat_inst.sample_rate)
 
-                    prob = np.random.uniform(0,1)
-                    if prob < 0.1:
-                        speech0 *= 0
-                        target = 0
-                    else:
-                        target = 1
-                    stimes += [stime + len_sp_last]
-                    etimes += [etime + len_sp_last]
-                    targets += [target]
-                    speech = np.concatenate((speech, speech0))
-                    len_sp_last += len(speech)
-            if success:
-                stimes  = np.array(stimes)
-                etimes  = np.array(etimes)
-                targets = np.array(targets)
-                start_frames    = (stimes / self.params_audio_def['hop']) + 2 # target level frame
-                start_frames    = start_frames.astype(np.int32)
-                end_frames      = (etimes / self.params_audio_def['hop']) + 2 # target level frame
-                end_frames      = end_frames.astype(np.int32)
-                # add noise to sig
-                noise = add_noise.get_noise(
-                            self.noise_files[self.train_set],
-                            len(speech),
-                            self.feat_inst.sample_rate)
-                audio = add_noise.add_noise(
-                            speech,
-                            noise,
-                            self.snr_db,
-                            stime,
-                            etime,
-                            min_amp=0.01,
-                            max_amp=0.95)
-                # feature extraction of sig
-                spec, _, feat, _ = self.feat_inst.block_proc(audio)
-                ntype = re.sub('/','_', self.ntype)
-                tfrecord = re.sub(  r'\.tfrecord$',
-                                    f'_snr{self.snr_db}dB_{ntype}.tfrecord',
-                                    tfrecord)
-                os.makedirs(os.path.dirname(tfrecord), exist_ok=True)
-                try:
-                    timesteps, _  = feat.shape
-                    width_targets = end_frames - start_frames + 1
-                    tfrecord_converter_vad.make_tfrecord( # pylint: disable=too-many-function-args
-                                        tfrecord,
-                                        feat,
-                                        targets,
-                                        timesteps,
-                                        start_frames,
-                                        width_targets)
+                                self.cnt = self.cnt + 1
 
-                except: # pylint: disable=bare-except
-                    print(f"Thread-{id_process}: {i}, processing {tfrecord} failed")
-                else:
-                    self.success_dict[self.id_process] += [tfrecord]
-                    # since tfrecord file starts: data/tfrecords/speakers/...
-                    # strip the leading "data/" when uploading
-                    if UPLOAD_TFRECORD_S3:
-                        s3.upload_file(tfrecord, S3_BUCKET, tfrecord)
-                    else:
-                        pass
-                if DEBUG:
-                    sd.play(audio, self.feat_inst.sample_rate)
-                    print(fnames[2*i])
-                    print(fnames[2*i + 1])
-                    print(start_frames)
-                    print(targets)
-                    print(audio)
-                    flabel = np.zeros(spec.shape[0])
-                    for start_frame, end_frame, target in zip(start_frames, end_frames, targets):
-                        flabel[start_frame: end_frame] = target
-                    display_stft(
-                        audio, spec.T, feat.T,
-                        self.feat_inst.sample_rate,
-                        label_frame=flabel)
-
-                    sf.write(f'test_wavs/speech_{self.cnt}.wav', audio, self.feat_inst.sample_rate)
-                    sf.write(f'test_wavs/speech_{self.cnt}_ref.wav',
-                             speech, self.feat_inst.sample_rate)
-
-                    self.cnt = self.cnt + 1
+        self.success_dict[self.id_process] = outlist
 
 def main(args):
     """
@@ -255,22 +275,9 @@ def main(args):
         wandb.config.update(args)
 
     train_sets = ["train", "test"]
-
-    ntypes = [
-        'ESC-50-MASTER',
-        'wham_noise',
-        "social_noise",
-        'FSD50K',
-        'musan',
-        'traffic'
-    ]
-    if DEBUG:
-        snr_dbs_min_max = [100]
-    else:
-        snr_dbs_min_max = [-6, -3, 0, 3, 6, 9, 18]
     # Prepare noise dataset, train and test sets
     os.makedirs('data/noise_list', exist_ok=True)
-    for ntype in ntypes:
+    for ntype in NOISE_TYPES:
         if ntype=='wham_noise':
             for set0 in ['train', 'test']:
                 noise_files_lst = f'data/noise_list/{set0}_noiselist_{ntype}.csv'
@@ -353,87 +360,65 @@ def main(args):
     tot_success_dict = {'train': [], 'test': []}
 
     for train_set in train_sets:
-        for snr_db in snr_dbs_min_max:
-            with open(target_files[train_set], 'r') as file: # pylint: disable=unspecified-encoding
-                filepaths_all = file.readlines()[1:]
+        with open(target_files[train_set]) as file: # pylint: disable=unspecified-encoding
+            filepaths_all = yaml.load(file, Loader=SafeLoader)
+            len0 = NUM_GROUP_PPLS * int(len(filepaths_all) / NUM_GROUP_PPLS)
+            filepaths = filepaths_all[:len0]
+        blk_size = int(np.floor(len(filepaths) / args.num_procs))
+        sub_src = []
+        for i in range(args.num_procs):
+            idx0 = i * blk_size
+            if i == args.num_procs - 1:
+                sub_src += [filepaths[idx0:]]
+            else:
+                sub_src += [filepaths[idx0:blk_size+idx0]]
+        manager = multiprocessing.Manager()
+        success_dict = manager.dict({i: [] for i in range(args.num_procs)})
+        print(f'{train_set} set running:, snr = {SNR_DBS_MIN_MAX} db')
 
-            for ntype in ntypes:
-                random.shuffle(filepaths_all)
-                if args.size_train != -1:
-                    if train_set == "train":
-                        len0 = args.size_train
-                    else:
-                        len0 = int(args.size_train / 5)
-                    filepaths = filepaths_all[:len0]
-                else:
-                    filepaths = filepaths_all
-                blk_size = int(np.floor(len(filepaths) / args.num_procs))
-                sub_src = []
-                for i in range(args.num_procs):
-                    idx0 = i * blk_size
-                    if i == args.num_procs - 1:
-                        sub_src += [filepaths[idx0:]]
-                    else:
-                        sub_src += [filepaths[idx0:blk_size+idx0]]
-                manager = multiprocessing.Manager()
-                success_dict = manager.dict({i: [] for i in range(args.num_procs)})
-                print(f'{train_set} set running:, snr = {snr_db}db, ntype={ntype}')
-                ntype0 = re.sub(r'/', '_', ntype)
-                noise_files_train = f'data/noise_list/train_noiselist_{ntype0}.csv'
-                noise_files_test = f'data/noise_list/test_noiselist_{ntype0}.csv'
-                with open(noise_files_train) as file: # pylint: disable=unspecified-encoding
-                    lines = file.readlines()
-                lines_tr = [line.strip() for line in lines]
+        processes = [
+            FeatMultiProcsClass(
+                    i, f"Thread-{i}",
+                    sub_src[i],
+                    train_set,
+                    NOISE_TYPES,
+                    SNR_DBS_MIN_MAX,
+                    success_dict,
+                    params_audio_def = params_audio,
+                    num_processes = args.num_procs)
+                        for i in range(args.num_procs)]
 
-                with open(noise_files_test) as file: # pylint: disable=unspecified-encoding
-                    lines = file.readlines()
-                lines_te = [line.strip() for line in lines]
+        start_time = time.time()
 
-                noise_files = { 'train' : lines_tr,
-                                'test'  : lines_te}
-                processes = [
-                    FeatMultiProcsClass(
-                            i, f"Thread-{i}",
-                            sub_src[i],
-                            train_set,
-                            ntype,
-                            noise_files,
-                            snr_db,
-                            success_dict,
-                            params_audio_def = params_audio,
-                            num_processes = args.num_procs)
-                                for i in range(args.num_procs)]
+        if DEBUG:
+            for proc in processes:
+                proc.run()
+        else:
+            for proc in processes:
+                proc.start()
 
-                start_time = time.time()
+            for proc in processes:
+                proc.join()
+            print(f"\nTime elapse {time.time() - start_time} sec")
 
-                if DEBUG:
-                    for proc in processes:
-                        proc.run()
-                else:
-                    for proc in processes:
-                        proc.start()
+        if args.wandb_track:
+            data = wandb.Artifact(
+                S3_BUCKET + "-tfrecords",
+                type="dataset",
+                description="tfrecords of speech command dataset")
+            data.add_reference(f"s3://{S3_BUCKET}/{S3_PREFIX}", max_objects=31000)
+            run.log_artifact(data)
 
-                    for proc in processes:
-                        proc.join()
-                    print(f"Time elapse {time.time() - start_time} sec")
-
-                if args.wandb_track:
-                    data = wandb.Artifact(
-                        S3_BUCKET + "-tfrecords",
-                        type="dataset",
-                        description="tfrecords of speech command dataset")
-                    data.add_reference(f"s3://{S3_BUCKET}/{S3_PREFIX}", max_objects=31000)
-                    run.log_artifact(data)
-
-                for lst in success_dict.values():
-                    tot_success_dict[train_set] += lst
+        for lst in success_dict.values():
+            tot_success_dict[train_set] += lst
 
     if not DEBUG:
         for train_set in train_sets:
-            with open(f'data/{train_set}_tfrecords_vad.csv', 'w') as file: # pylint: disable=unspecified-encoding
-                for tfrecord in tot_success_dict[train_set]:
-                    tfrecord = re.sub(r'\\', '/', tfrecord)
-                    file.write(f'{tfrecord}\n')
+            with open(f'data/{train_set}_tfrecords_nnid.yaml', 'w') as file: # pylint: disable=unspecified-encoding
+                yaml.dump(tot_success_dict[train_set], file)
+                # for tfrecord in tot_success_dict[train_set]:
+                #     tfrecord = re.sub(r'\\', '/', tfrecord)
+                #     file.write(f'{tfrecord}\n')
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
@@ -444,13 +429,13 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-tr',
         '--train_dataset_path',
-        default = 'data/vad_train_new.csv',
+        default = 'data/nnid_train.yaml',
         help    = 'path to train data file')
 
     argparser.add_argument(
         '-tt',
         '--test_dataset_path',
-        default = 'data/vad_test_new.csv',
+        default = 'data/nnid_test.yaml',
         help    = 'path to test data file')
 
     argparser.add_argument(

@@ -7,84 +7,66 @@ def get_corr(
         feats,
         num_group_ppls,
         num_prons,
-        eps = 2**-15):
+        eps = 10**-5):
     """
     Correlation function
     """
+    nfeats = feats / (np.sqrt(np.sum(feats**2, axis=-1, keepdims=True)) + eps)
     mat_corr = np.zeros((num_group_ppls*num_prons,num_group_ppls), dtype=np.float32)
     for i in range(num_group_ppls):
-        center = np.sum(feats[i*num_prons:num_prons * (i+1),:], axis=0)
+        center = np.sum(nfeats[i*num_prons:num_prons * (i+1),:], axis=0)
         # print(center)
         for j in range(num_group_ppls):
             for k in range(num_prons):
-                feat = feats[k + j * num_prons,:]
+                nfeat = nfeats[k + j * num_prons,:]
                 if i == j:
-                    center0 = (center - feat) / (num_prons - 1)
+                    center0 = (center - nfeat) / (num_prons - 1)
                 else:
                     center0 = center / num_prons
-                norm_feat = np.sum(feat**2)
                 norm_center0 = np.sum(center0**2)
 
-                corr = np.matmul(feat, center0)
-                corr = corr / (np.sqrt(norm_feat * norm_center0) + eps)
+                corr = np.matmul(nfeat, center0)
+                corr = corr / (np.sqrt(norm_center0) + eps)
                 mat_corr[k + j * num_prons, i] = corr
     return mat_corr
 
 def get_corr_fast(
         feats,
-        diag,
+        targets,
         num_group_ppls,
         num_prons,
-        eps = 2**-15):
+        eps = 10**-5):
     """
     Fast Correlation function
     """
-    # print(f"feats: {feats}")
-    ones_1xnum_group_ppls = tf.ones((1,num_group_ppls), dtype=tf.float32)
-    ones_sentsx1 = tf.ones((num_group_ppls * num_prons,1), dtype=tf.float32)
-    centers = tf.matmul(tf.transpose(feats),diag)
-    # print(f"centers {centers}")
-    mat_corr = tf.matmul(feats, centers)
-    norm2_feat = tf.reduce_sum(feats**2, axis=-1)
-    norm2_feat = tf.reshape(norm2_feat, (num_group_ppls * num_prons,-1))
-    norm2_feat = tf.matmul(norm2_feat, ones_1xnum_group_ppls) * diag
+    nfeats = feats / tf.maximum(
+                tf.sqrt(tf.reduce_sum(feats**2, axis=-1, keepdims=True)),
+                eps)
+    centers = tf.matmul(tf.transpose(nfeats),targets)
+
+    norm2_feat = tf.identity(targets)
+
+    mat_corr = tf.matmul(nfeats, centers)
     mat_corr = mat_corr - norm2_feat
-    # print(f"eps: {eps}")
-    # print(f"mat_cor: {mat_corr}")
 
-    scale = tf.ones(
-        (num_group_ppls * num_prons,num_group_ppls),
-        dtype=tf.float32) * num_prons - diag
-    scale = 1/scale
-    mat_corr = mat_corr * scale
-    # print(scale)
-    norm_centers = tf.reduce_sum(centers**2, axis=0)
-    norm_centers = tf.reshape(norm_centers, (-1,num_group_ppls))
+    norm2_centers = tf.reduce_sum(centers**2, axis=0, keepdims=True)
 
-    norm_centers = tf.matmul(
-        ones_sentsx1,
-        norm_centers) * (1 - diag)
-    # print(f"norm_centers: {norm_centers}")
+    norm2_centers = tf.tile(
+        norm2_centers,
+        [num_group_ppls * num_prons,1]) * (1 - targets)
 
-    norm_centers_diag = tf.transpose(tf.matmul(centers, tf.transpose(diag)))
-    # print(norm_centers_diag.shape)
-    norm_centers_diag = tf.reduce_sum((norm_centers_diag - feats)**2, axis=-1)
-    norm_centers_diag = tf.reshape(norm_centers_diag, (num_group_ppls * num_prons,1))
-    norm_centers_diag = tf.matmul(
-        norm_centers_diag,
-        ones_1xnum_group_ppls) * diag
-    # print(norm_centers_diag)
-    norm_centers = (norm_centers + norm_centers_diag) * (scale**2)
-    # print(norm_centers)
-    norm_feats = tf.reduce_sum(feats**2, axis=-1)
-    norm_feats = tf.reshape(norm_feats, (num_group_ppls * num_prons,1))
-    norm_feats = tf.matmul(norm_feats, ones_1xnum_group_ppls)
-    # print(norm_feats)
-    mat_corr = mat_corr / (tf.sqrt(norm_centers * norm_feats) + eps)
-    # print(mat_corr.numpy())
+    ncenters_targets = tf.transpose(tf.matmul(centers, tf.transpose(targets)))
+    norm2_centers_targets = tf.reduce_sum((ncenters_targets - nfeats)**2, axis=-1, keepdims=True)
+
+    norm2_centers_targets = tf.tile(
+        norm2_centers_targets,
+        [1,num_group_ppls]) * targets
+    norm2_centers = norm2_centers + norm2_centers_targets
+    mat_corr = mat_corr / (tf.sqrt(norm2_centers) + eps)
+
     return mat_corr
 
-def gen_diag_nnid(num_group_ppls, num_prons):
+def gen_target_nnid(num_group_ppls, num_prons):
     """ 
     Generate diag for nnid
     """
@@ -94,14 +76,17 @@ if __name__=="__main__":
     NUM_GROUP_PPLS  = 3
     NUM_PRONS       = 4
     DIM_FEAT        = 6
-    EPS             = 2**-15
-    DIAG = gen_diag_nnid(NUM_GROUP_PPLS, NUM_PRONS)
+    EPS             = 0
+    TARGET = gen_target_nnid(NUM_GROUP_PPLS, NUM_PRONS)
     # print(diag)
 
-    FEATS = tf.constant(np.random.randn(NUM_GROUP_PPLS * NUM_PRONS, DIM_FEAT), dtype=np.float32)
-    mat= get_corr_fast(
+    FEATS = tf.constant(
+        np.random.randint(1,100, size = (NUM_GROUP_PPLS * NUM_PRONS, DIM_FEAT)),
+        dtype=np.float32)
+
+    mat = get_corr_fast(
         FEATS,
-        DIAG,
+        TARGET,
         NUM_GROUP_PPLS,
         NUM_PRONS,
         eps = EPS).numpy()
@@ -119,4 +104,4 @@ if __name__=="__main__":
 
     print("err")
     print(mat-mat_ref)
-    
+    print(np.abs(mat-mat_ref).max())

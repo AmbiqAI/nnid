@@ -6,7 +6,7 @@ import pickle
 import numpy as np
 import c_code_table_converter
 from .nn_activation import linear, sigmoid, relu6 # pylint: disable=no-name-in-module
-from .nn_module import NeuralNetClass, lstm_states
+from .nn_module_nnid import NeuralNetClass, lstm_states
 from .feature_module import FeatureClass
 from .converter_fix_point import fakefix
 from .load_nn_arch import load_nn_arch, setup_nn_folder

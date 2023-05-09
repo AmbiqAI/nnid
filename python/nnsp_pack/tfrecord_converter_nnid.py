@@ -1,9 +1,10 @@
 """
 Speaker verification pipeline
 """
-import tensorflow as tf
-import numpy as np
 import os
+import numpy as np
+import tensorflow as tf
+
 def make_tfrecord(  fname,
                     feature):
     """
@@ -66,8 +67,9 @@ def parser(example_proto):
 def tfrecords_pipeline(
         fnames,
         num_prons,
-        num_noisetype,
-        num_group_ppls):
+        num_aug_sents,
+        num_group_ppls,
+        is_shuffle=False):
     """_summary_
 
     Args:
@@ -77,13 +79,12 @@ def tfrecords_pipeline(
         num_group_ppls (int): number of people for mini-batch
     """
     def decode_tfrecord(tfrecord):
-        print(tfrecord)
         tfrecord = parser(tfrecord)
         return tfrecord
     def mapping_prons(dataset):
         dataset = tf.data.Dataset.from_tensor_slices(dataset)
-        dataset = dataset.shuffle(num_noisetype)
-        print(dataset)
+        if is_shuffle:
+            dataset = dataset.shuffle(num_aug_sents)
         dataset = tf.data.TFRecordDataset(dataset)
         return dataset
     def mapping_ppl(dataset):
@@ -95,11 +96,13 @@ def tfrecords_pipeline(
             deterministic=True,
             num_parallel_calls = tf.data.AUTOTUNE)
         return dataset
+
     dataset = tf.data.Dataset.from_tensor_slices(fnames)
-    dataset = dataset.shuffle(len(fnames), reshuffle_each_iteration=True)
+    if is_shuffle:
+        dataset = dataset.shuffle(len(fnames), reshuffle_each_iteration=True)
     dataset = dataset.interleave(
         mapping_ppl,
-        cycle_length=len(fnames),
+        cycle_length=num_group_ppls, # len(fnames)
         block_length=num_prons,
         deterministic=True,
         num_parallel_calls = tf.data.AUTOTUNE)
@@ -107,26 +110,27 @@ def tfrecords_pipeline(
                 decode_tfrecord,
                 num_parallel_calls = tf.data.AUTOTUNE,
                 deterministic = True)
-    dataset = dataset.batch(num_group_ppls*num_prons)
-    dataset = dataset.prefetch(1)
+    dataset = dataset.batch(num_group_ppls * num_prons)
+    dataset = dataset.prefetch(tf.data.AUTOTUNE)
     iterator = iter(dataset)
     return iterator, dataset
 
 if __name__ == "__main__":
-    num_prons = 4 # pylint: disable=invalid-name
-    num_noisetype = 3 # pylint: disable=invalid-name
-    num_group_ppls = 2 # pylint: disable=invalid-name
-    dim_feat=2
-    timesteps = 6
+    NUM_PRONS = 4
+    NUM_NOISETYPE = 3
+    NUM_SNRS = 2
+    NUM_GROUP_PPLS = 2
+    DIM_FEAT=2
+    TIMESTEPS = 6
     os.makedirs("fake_tfrecord", exist_ok=True)
 
     for ppl in range(1,5):
-        for sent in range(1, num_prons+1):
-            for ntype in range(1, num_noisetype+1):
+        for sent in range(1, NUM_PRONS+1):
+            for ntype in range(1, NUM_NOISETYPE+1):
                 fname = f"fake_tfrecord/id{ppl}_sent{sent}_noise{ntype}.tfrecord"
-                feat = np.ones((dim_feat, timesteps), dtype=np.float32) * (ppl+0.1*sent+0.01*ntype)
+                feat = np.ones((DIM_FEAT, TIMESTEPS), dtype=np.float32) * (ppl+0.1*sent+0.01*ntype)
                 make_tfrecord(fname, feat)
-    fnames =  [[['fake_tfrecord/id1_sent1_noise1.tfrecord', 'fake_tfrecord/id1_sent1_noise2.tfrecord', 'fake_tfrecord/id1_sent1_noise3.tfrecord'],
+    FAMES =  [[['fake_tfrecord/id1_sent1_noise1.tfrecord', 'fake_tfrecord/id1_sent1_noise2.tfrecord', 'fake_tfrecord/id1_sent1_noise3.tfrecord'],
                 ['fake_tfrecord/id1_sent2_noise1.tfrecord', 'fake_tfrecord/id1_sent2_noise2.tfrecord', 'fake_tfrecord/id1_sent2_noise3.tfrecord'],
                 ['fake_tfrecord/id1_sent3_noise1.tfrecord', 'fake_tfrecord/id1_sent3_noise2.tfrecord', 'fake_tfrecord/id1_sent3_noise3.tfrecord'],
                 ['fake_tfrecord/id1_sent4_noise1.tfrecord', 'fake_tfrecord/id1_sent4_noise2.tfrecord', 'fake_tfrecord/id1_sent4_noise3.tfrecord']], # 1st person
@@ -142,11 +146,12 @@ if __name__ == "__main__":
                 ['fake_tfrecord/id4_sent2_noise1.tfrecord', 'fake_tfrecord/id4_sent2_noise2.tfrecord', 'fake_tfrecord/id4_sent2_noise3.tfrecord'],
                 ['fake_tfrecord/id4_sent3_noise1.tfrecord', 'fake_tfrecord/id4_sent3_noise2.tfrecord', 'fake_tfrecord/id4_sent3_noise3.tfrecord'],
                 ['fake_tfrecord/id4_sent4_noise1.tfrecord', 'fake_tfrecord/id4_sent4_noise2.tfrecord', 'fake_tfrecord/id4_sent4_noise3.tfrecord']]] # 4st person
-    iter, dataset = tfrecords_pipeline(
-        fnames,
-        num_prons,
-        num_noisetype,
-        num_group_ppls)
-    for d in dataset:
-        print(d[0].numpy())
-        break
+    _, dataset = tfrecords_pipeline(
+        FAMES,
+        NUM_PRONS,
+        NUM_NOISETYPE,
+        NUM_GROUP_PPLS)
+    for i, d in enumerate(dataset):
+        print(f"batch-{i}")
+        print(d[0])
+        

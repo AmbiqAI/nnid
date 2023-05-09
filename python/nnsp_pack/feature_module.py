@@ -10,6 +10,7 @@ from .mel import gen_mel_bank
 from .converter_fix_point import fakefix
 from .fakefix_fft import rfft
 from .log_module import log10_fakeFix
+from .basic_dsp import dc_remove
 
 def my_colorbar(ax_handle, im=None):
     """
@@ -343,6 +344,7 @@ class FeatureClass:
         """
         Block of frames processing
         """
+        data = dc_remove(data)
         if self.fast_stft:
             dframe = strided_app(data, self.win_size, self.hop )
             dframe_win = fakefix(dframe * self.win, 16, 15)
