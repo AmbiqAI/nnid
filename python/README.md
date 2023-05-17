@@ -1,7 +1,7 @@
 # Neural net identification (NNID) model
-This document explains how to train speaker identification (speaker verfication) by using recurrent neural network. Specially, we use `text-independent` as an example since the data can be easily acquired.
+This document explains how to train speaker identification (speaker verfication) by using recurrent neural network. Specially, we use the `text-independent` model as an example since it is free and can be easily acquired.
 ## Prerequisite
-Note that all python scripts described here are all under the folder `nnse/python`
+Note that all python scripts described here are all under the folder `nnid/python`
 - Python 3.7+
 - (optional but recommended) Create a python [virtualenv](https://docs.python.org/3/library/venv.html) and install python dependencies into it:
   - Linux
@@ -36,17 +36,18 @@ To execute the test, type the command
   * `--speaker`: input your name. In this case, speaker is `Tom`
 
 After execution, a GUI will pop out to ask you to do following processes
-  * `enrollment` : you are asked to enroll 3 sentences. Click `record` button to start your recording for 6 seconds (see Fig. 1). Try to say anything to fill up this duration. After recording is finished, you can record it again if you are not satisfied. Or you can close the window and go to next recording. Repeat the processes 3 times to finish the enrollment. After enrollment, it will automatically generate your own embeding vector. \
+  * `enrollment phase` : you are asked to enroll 3 sentences. Click `record` button to start your recording for 6 seconds (see Fig. 1). Try to say anything to fill up this duration. After recording is finished, you can record it again if you are not satisfied. Or you can close the window and go to next recording. Repeat the processes 3 times to finish the enrollment. After enrollment, it will automatically generate your own embeding vector, which will compare to the testing vector once you pronounce. \
    `Note` : only one the enrollment (to record 3 sentences) is required in the testing. However, you are free to enroll again. 
-  <p align="center">
+ * `Testing phase` : after embeding vector is generated, a GUI will pop up to record your test vector. Similar to enrollment, click `record` to recording your test
+vector. The NN model will compare this test vector to your own embedding vector. If it was matched, it will show in the command window. Also, it will compare two other speakers' pronounciations. It should not match to these pronounciations.
+<p align="center">
   <img src="./figures/enrollment.png"  width="80%">
 </p>
 <p align="center">
-  Fig. 1: GUI for enrollment. In the title it shows enrollment 1. This means this is the first enrollment. Click `record` button to start the recording. After recording, you can replay, record again or close the window to finish this enrollment.
+Fig. 1: A GUI interface for speaker verification enrollment. In the title it shows enrollment 1. This means this is the first enrollment. Click `record` button to start the recording. After recording, you can replay, record again or close the window to finish this enrollment. You have to enroll 3 sentences in total.
 </p>
   
- * `Testing` : after embeding vector is generated, a GUI will pop up to record your test vector. Similar to enrollment, click `record` to recording your test
-vector. The NN model will compare this test vector to your own embedding vector. If it was matched, it will show in the command window.
+
 ## Training procedure
 TBD
 

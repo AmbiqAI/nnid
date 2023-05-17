@@ -53,12 +53,12 @@ class AudioShowClass:
         ax_handle.set_ylim(LINE_MINMAX)
         if id_enroll==-1:
             if os.path.exists(self.wave_output_filename):
-                plt.title(f"Audio exists. \nYou can record again and close the window to continue")
+                plt.title(f"Audio exists. \nYou can record again. Close the window to continue")
             else:
                 plt.title(f"click record and close the window to continue")
         else:
             if os.path.exists(self.wave_output_filename):
-                plt.title(f"Enrollment {id_enroll+1}: audio exists. \nYou can record again and close the window to continue")
+                plt.title(f"Enrollment {id_enroll+1}: audio exists. \nYou can record again. Close the window to continue")
             else:
                 plt.title(f"Enrollment {id_enroll+1}: \nclick record and close the window to continue")
         self.line_data, = ax_handle.plot([], [], lw=0.2, color = 'blue')
@@ -100,6 +100,8 @@ class AudioShowClass:
             if len(self.data_buffer) != len(self.const_data_buffer):
                 self.data_buffer = self.const_data_buffer * 0
             self.line_data.set_data(self.const_data_buffer, self.data_buffer)
+        else:
+            self.line_data.set_data(self.const_data_buffer, self.data_buffer * 0)
         self.lock_button = 0
         plt.show()
 

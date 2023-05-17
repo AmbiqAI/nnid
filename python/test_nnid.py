@@ -257,14 +257,14 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-s',
         '--speaker',
-        default = "paul",
+        default = "Tom",
         type=str,
         help    = "speaker to enroll")
 
     argparser.add_argument(
         '-t',
         '--threshold',
-        default = 0.70,
+        default = 0.80,
         type=float,
         help    = "threshold for spk verification")
 
