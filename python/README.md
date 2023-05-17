@@ -36,14 +36,15 @@ To execute the test, type the command
   * `--speaker`: input your name. In this case, speaker is `Tom`
 
 After execution, a GUI will pop out to ask you to do following processes
-  * `enrollment` : you are asked to enroll 3 sentences. Click `record` button to start your recording for 6 seconds (see Fig. 1). Try to say anything to fill up this duration. After recording is finished, you can record it again if you are not satisfied. Or you can close the window and go to next recording. Repeat the processes 3 times to finish the enrollment. After enrollment, it will automatically generate your own embeding vector.
+  * `enrollment` : you are asked to enroll 3 sentences. Click `record` button to start your recording for 6 seconds (see Fig. 1). Try to say anything to fill up this duration. After recording is finished, you can record it again if you are not satisfied. Or you can close the window and go to next recording. Repeat the processes 3 times to finish the enrollment. After enrollment, it will automatically generate your own embeding vector. \
+   `Note` : only one the enrollment (to record 3 sentences) is required in the testing. However, you are free to enroll again. 
   <p align="center">
   <img src="./figures/enrollment.png"  width="80%">
 </p>
 <p align="center">
   Fig. 1: GUI for enrollment. In the title it shows enrollment 1. This means this is the first enrollment. Click `record` button to start the recording. After recording, you can replay, record again or close the window to finish this enrollment.
 </p>
-  `Note` : only one the enrollment (to record 3 sentences) is required in the testing. However, you are free to enroll again.  
+  
  * `Testing` : after embeding vector is generated, a GUI will pop up to record your test vector. Similar to enrollment, click `record` to recording your test
 vector. The NN model will compare this test vector to your own embedding vector. If it was matched, it will show in the command window.
 ## Training procedure
