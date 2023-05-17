@@ -67,8 +67,8 @@ Arguments:
   * nn_arch : the definition of neural net (NN) architecture. In this case, the architecture is defined in [here](nn_arch/def_id_nn_arch100_ti.txt)
   * epoch_loaded : 
     * 'random' : random initialization of the weight table
-    * 'latest' : the latest weight table which was already trained epoch
-    * 80       : epoch 80 in this example. You can also put any the number of epoch (integer) that was trained
+    * 'latest' : the weight table is loaded in the latest epoch which was already trained
+    * 80       : the weight table is loaded in epoch 80 in this example. You can also put any the number of epoch (integer) that was trained
   * learning_rate : the learning rate, which is 4*10**-4 in this example
 ### `Testing phase`
 See the `Quick start` section
