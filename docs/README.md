@@ -1,5 +1,5 @@
 # SE training datasets
-This `README.md` gives an overview of our audio dataset we used to train the speech enhancement (SE) model. 
+This `README.md` gives an overview of our audio dataset we used to train the speaker identification (NNID) model. 
 Before download the data below, please read carefully on their licence agreements.
 The datasets will be downloaded automatically in our [python script](../python/data_se.py) when you generate the features of training data by setting the argument `download=1` as below
 ```python

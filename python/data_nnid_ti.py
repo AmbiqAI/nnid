@@ -20,6 +20,7 @@ from nnsp_pack import tfrecord_converter_nnid
 from nnsp_pack.feature_module import FeatureClass, display_stft
 from nnsp_pack import add_noise
 from nnsp_pack import boto3_op
+from nnsp_pack.download_data import download
 
 DEBUG = False
 UPLOAD_TFRECORD_S3 = False
@@ -246,7 +247,7 @@ class FeatMultiProcsClass(multiprocessing.Process):
                                 for start_frame, end_frame, target in tmp:
                                     flabel[start_frame: end_frame] = target
                                 display_stft(
-                                    audio, spec.T, feat.T,
+                                    audio, spec.T, feat.T, feat.T,
                                     self.feat_inst.sample_rate,
                                     label_frame=flabel)
 
@@ -265,15 +266,9 @@ def main(args):
     """
     main function to generate all training and testing data
     """
-    if DOWLOAD_DATA:
-        s3 = download_data()
-    if args.wandb_track:
-        run = wandb.init(
-            project=args.wandb_project,
-            entity=args.wandb_entity,
-            job_type="data-update")
-        wandb.config.update(args)
-
+    download = args.download
+    if download:
+        download()
     train_sets = ["train", "test"]
     # Prepare noise dataset, train and test sets
     os.makedirs('data/noise_list', exist_ok=True)
@@ -425,6 +420,13 @@ if __name__ == "__main__":
 
     argparser = argparse.ArgumentParser(
         description='Generate TFrecord formatted input data from a raw speech commands dataset')
+
+    argparser.add_argument(
+        '-d',
+        '--download',
+        type    = int,
+        default = 0,
+        help    = 'download training data')
 
     argparser.add_argument(
         '-tr',

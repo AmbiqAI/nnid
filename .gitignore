@@ -12,7 +12,7 @@
 *.pyc
 *.pk
 wavs/
-python/models_trained_bk
+python/models_trained/
 nnsp/python/data/*tfrecords*.csv
 evb/src/weights
 python/fix.py

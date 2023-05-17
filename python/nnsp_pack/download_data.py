@@ -7,12 +7,25 @@ import tarfile
 from zipfile import ZipFile
 import requests
 
-def se_download():
+def download():
     """
     download se dataset
     """
     wavs = "wavs"
     os.makedirs(wavs, exist_ok=True)
+
+    # LibriSpeech 100hr
+    target_name = 'train-clean-100.tar.gz'
+    dst_folder = f'./{wavs}/'
+    url = f'https://us.openslr.org/resources/12/{target_name}'
+    response = requests.get(url, stream=True)
+    print(f"Downloading {url}")
+    if response.status_code == 200:
+        with open(f"{wavs}/{target_name}", 'wb') as file:
+            file.write(response.raw.read())
+    print(f"extract {target_name}")
+    with tarfile.open(f"{wavs}/{target_name}") as file:
+        file.extractall(dst_folder)
 
     # LibriSpeech 360hr
     target_name = 'train-clean-360.tar.gz'
@@ -27,10 +40,10 @@ def se_download():
     with tarfile.open(f"{wavs}/{target_name}") as file:
         file.extractall(dst_folder)
 
-    # thchs30
-    target_name = 'data_thchs30.tgz'
+    # LibriSpeech 500hr
+    target_name = 'train-other-500.tar.gz'
     dst_folder = f'./{wavs}/'
-    url = f'https://openslr.elda.org/resources/18/{target_name}'
+    url = f'https://us.openslr.org/resources/12/{target_name}'
     response = requests.get(url, stream=True)
     print(f"Downloading {url}")
     if response.status_code == 200:
@@ -39,7 +52,6 @@ def se_download():
     print(f"extract {target_name}")
     with tarfile.open(f"{wavs}/{target_name}") as file:
         file.extractall(dst_folder)
-
 
     # noise dataset
     os.makedirs(f"{wavs}/noise", exist_ok=True)
@@ -117,4 +129,4 @@ def se_download():
     #             f.write(response.raw.read())
     # os.system("zip -s 0 FSD50K.dev_audio.zip --out unsplit.zip")
 if __name__ == "__main__":
-    se_download()
+    download()
