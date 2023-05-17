@@ -49,8 +49,29 @@ Fig. 1: A GUI interface for speaker verification enrollment. In the title it sho
   
 
 ## Training procedure
-TBD
-
+### `Data generation phase`
+To generate the training data (features and targets), type
+```cmd
+$ python data_nnid_ti.py --download=1
+```
+Arguments:
+  * download:
+    * 1 : This option will download the data
+    * 0 : This option will not download the data
+### `Training phase`
+To train the NNID model, type
+```cmd
+$ python train_nnid.py --nn_arch='nn_arch/def_id_nn_arch100_ti.txt' --epoch_loaded=`random` --learning_rate=4 * 10**-4
+```
+Arguments:
+  * nn_arch : the definition of neural net (NN) architecture. In this case, the architecture is defined in [here](nn_arch/def_id_nn_arch100_ti.txt)
+  * epoch_loaded : 
+    * 'random' : random initialization of the weight table
+    * 'latest' : the latest weight table which was already trained epoch
+    * 80       : epoch 80 in this example. You can also put any the number of epoch (integer) that was trained
+  * learning_rate : the learning rate, which is 4*10**-4 in this example
+### `Testing phase`
+See the `Quick start` section
 # Convert TF-model to C table
 To run the model on the embedded system, Apollo4 in our cae, we need a tool to support
 1. A neural network architecture, equivalent to Tensorflow, to perform on the desired microcontroller,

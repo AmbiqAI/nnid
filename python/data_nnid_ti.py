@@ -20,7 +20,7 @@ from nnsp_pack import tfrecord_converter_nnid
 from nnsp_pack.feature_module import FeatureClass, display_stft
 from nnsp_pack import add_noise
 from nnsp_pack import boto3_op
-from nnsp_pack.download_data import download
+from nnsp_pack.download_data import download_data
 
 DEBUG = False
 UPLOAD_TFRECORD_S3 = False
@@ -31,10 +31,10 @@ NUM_GROUP_PPLS = 64
 NOISE_TYPES = [
         'ESC-50-MASTER',
         'wham_noise',
-        "social_noise",
+        # "social_noise",
         'FSD50K',
         'musan',
-        'traffic'
+        # 'traffic'
         ]
 if DEBUG:
     SNR_DBS_MIN_MAX = [100]
@@ -51,18 +51,6 @@ params_audio = {
     'len_fft'       : 512,
     'sample_rate'   : 16000,
     'nfilters_mel'  : 40}
-
-def download_data():
-    """
-    download data
-    """
-    audio_lists = [
-        'data/test_files_vad.csv',
-        'data/train_files_vad.csv',
-        'data/noise_list.csv']
-    s3 = boto3.client('s3')
-    boto3_op.s3_download(S3_BUCKET, audio_lists)
-    return s3
 
 class FeatMultiProcsClass(multiprocessing.Process):
     """
@@ -268,7 +256,7 @@ def main(args):
     """
     download = args.download
     if download:
-        download()
+        download_data()
     train_sets = ["train", "test"]
     # Prepare noise dataset, train and test sets
     os.makedirs('data/noise_list', exist_ok=True)

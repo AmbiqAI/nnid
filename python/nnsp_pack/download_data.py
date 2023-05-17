@@ -1,5 +1,5 @@
 """
-Download the required SE training dataset
+Download the required NNID training dataset
 """
 import os
 import shutil
@@ -7,7 +7,7 @@ import tarfile
 from zipfile import ZipFile
 import requests
 
-def download():
+def download_data():
     """
     download se dataset
     """
@@ -129,4 +129,4 @@ def download():
     #             f.write(response.raw.read())
     # os.system("zip -s 0 FSD50K.dev_audio.zip --out unsplit.zip")
 if __name__ == "__main__":
-    download()
+    download_data()
