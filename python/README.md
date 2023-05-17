@@ -1,7 +1,5 @@
 # Neural net identification (NNID) model
 This document explains how to train speaker identification (speaker verfication) by using recurrent neural network. Specially, we use `text-independent` as an example since the data can be easily acquired.
-# Loss functions
-It is worth to compare the performance based on the loss functions listed in Table 1 (see [here](https://www.microsoft.com/en-us/research/uploads/prod/2021/08/23.pdf)).
 ## Prerequisite
 Note that all python scripts described here are all under the folder `nnse/python`
 - Python 3.7+
