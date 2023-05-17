@@ -14,15 +14,5 @@ activation tanh
 dropprob 0.25
 
 layer_type fc
-layer_neurons 100
-activation relu6
-dropprob 0.25
-
-layer_type fc
-layer_neurons 100
-activation relu6
-dropprob 0.25
-
-layer_type fc
 layer_neurons 64
 activation linear

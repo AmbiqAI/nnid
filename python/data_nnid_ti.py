@@ -29,16 +29,16 @@ NUM_SENTS = 10
 NUM_GROUP_PPLS = 64
 NOISE_TYPES = [
         'ESC-50-MASTER',
-        # 'wham_noise',
-        # "social_noise",
-        # 'FSD50K',
-        # 'musan',
-        # 'traffic'
+        'wham_noise',
+        "social_noise",
+        'FSD50K',
+        'musan',
+        'traffic'
         ]
 if DEBUG:
     SNR_DBS_MIN_MAX = [100]
 else:
-    SNR_DBS_MIN_MAX = [10, 15, 20, 40]
+    SNR_DBS_MIN_MAX = [5, 10, 15, 20, 40]
 if UPLOAD_TFRECORD_S3:
     print('uploading tfrecords to s3 will slow down the process')
 S3_BUCKET = "ambiqai-speech-commands-dataset"

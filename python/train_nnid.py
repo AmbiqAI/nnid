@@ -32,7 +32,7 @@ DISPLAY_HISTOGRAM   = True
 TARGET = gen_target_nnid(NUM_GROUP_PPLS, NUM_SENTS)
 EPS                 = 10**-5
 
-# @tf.function
+@tf.function
 def train_kernel(
         feat, mask, target, states, net,
         optimizer,
@@ -354,7 +354,7 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-a',
         '--nn_arch',
-        default='nn_arch/def_id_nn_arch128x3_ti.txt',
+        default='nn_arch/def_id_nn_arch100_ti.txt',
         help='nn architecture')
 
     argparser.add_argument(
@@ -379,7 +379,7 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-l',
         '--learning_rate',
-        default =  4 * 10**-4,
+        default =  1 * 10**-5,
         type=float,
         help='learning rate')
 

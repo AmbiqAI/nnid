@@ -23,7 +23,8 @@ class AudioShowClass:
             frame_size              = 160,
             wave_output_filename    = "speech.wav",
             non_stop                = False,
-            proc_st                 = None):
+            proc_st                 = None,
+            id_enroll               = -1):
 
         self.record_seconds = record_seconds
         self.sample_rate = sample_rate
@@ -50,7 +51,16 @@ class AudioShowClass:
         plt.subplots_adjust(bottom=0.35)
         ax_handle.set_xlim((0, self.record_seconds))
         ax_handle.set_ylim(LINE_MINMAX)
-        plt.title("\"Record\" your voice and close the window to continue")
+        if id_enroll==-1:
+            if os.path.exists(self.wave_output_filename):
+                plt.title(f"Audio exists. \nYou can record again and close the window to continue")
+            else:
+                plt.title(f"click record and close the window to continue")
+        else:
+            if os.path.exists(self.wave_output_filename):
+                plt.title(f"Enrollment {id_enroll+1}: audio exists. \nYou can record again and close the window to continue")
+            else:
+                plt.title(f"Enrollment {id_enroll+1}: \nclick record and close the window to continue")
         self.line_data, = ax_handle.plot([], [], lw=0.2, color = 'blue')
         self.line_stop, = ax_handle.plot([], [], lw=0.2, color = 'k')
         ax_handle.set_xlabel('Time (Seconds)')
@@ -64,6 +74,7 @@ class AudioShowClass:
             self.const_data_buffer * 0 - 1,
             color='black',
             lw=1)
+
         # making buttons
         def make_button(pos, name, callback_func):
             ax_button = plt.axes(pos)
@@ -96,6 +107,10 @@ class AudioShowClass:
         '''
         Callback for start recording
         '''
+        dirname = os.path.dirname(self.wave_output_filename)
+        fname_embd = f"{dirname}/embedding.npy"
+        if os.path.exists(fname_embd):
+            os.remove(fname_embd)
         if self.lock_button == 0:
             self.lock_button = 1
             plt.figure(self.fig)
