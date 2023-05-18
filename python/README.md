@@ -28,11 +28,11 @@ Before working on training NNID model, we need to download the required datasets
 We provide an already trained model in this repo. The user can directly try on it. The model size is around `~110k` parameters. \
 To execute the test, type the command
 ```cmd
-  $ python test_nnid.py --epoch_loaded=80 --nn_arch='nn_arch/def_id_nn_arch100_ti.txt' --speaker='Tom' 
+  $ python test_nnid.py --epoch_loaded=102 --nn_arch='nn_arch/def_id_nn_arch100_ti.txt' --speaker='Tom' 
 ```
 `Input argruments`:
   * `--nn_arch`: it will load the definition of NN architecture in `nn_arch/def_id_nn_arch100_ti.txt`. 
-  * `--epoch_loaded`: it will load the model saved in epoch = 80.
+  * `--epoch_loaded`: it will load the model saved in epoch = 102.
   * `--speaker`: input your name. In this case, speaker is `Tom`
 
 After execution, a GUI will pop out to ask you to do following processes
@@ -68,7 +68,7 @@ Arguments:
   * epoch_loaded : 
     * 'random' : random initialization of the weight table
     * 'latest' : the weight table is loaded in the latest epoch which was already trained
-    * 80       : the weight table is loaded in epoch 80 in this example. You can also put any the number of epoch (integer) that was trained
+    * 102       : the weight table is loaded in epoch 102 in this example. You can also put any the number of epoch (integer) that was trained
   * learning_rate : the learning rate, which is 4*10**-4 in this example
 ### `Testing phase`
 See the `Quick start` section
