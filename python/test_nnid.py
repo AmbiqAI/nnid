@@ -160,6 +160,7 @@ def main(args):
             quantized,
             show_histogram  = SHOW_HISTOGRAM,
             np_inference    = NP_INFERENCE)
+
     fname_embd = f"test_wavs/{speaker}/embedding.npy"
     if not os.path.exists(fname_embd):
         for i in range(3):
@@ -271,13 +272,13 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-q',
         '--quantized',
-        default = False,
+        default = True,
         type=bool,
         help='is post quantization?')
 
     argparser.add_argument(
         '--epoch_loaded',
-        default= 80,
+        default= 102,
         help='starting epoch')
 
     main(argparser.parse_args())
