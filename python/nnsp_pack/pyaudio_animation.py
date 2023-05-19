@@ -25,7 +25,7 @@ class AudioShowClass:
             non_stop                = False,
             proc_st                 = None,
             id_enroll               = -1):
-
+        self.new_record = False
         self.record_seconds = record_seconds
         self.sample_rate = sample_rate
         self.frame_size = frame_size
@@ -105,14 +105,17 @@ class AudioShowClass:
         self.lock_button = 0
         plt.show()
 
+    def is_new_record(self):
+        """
+        callback whether record new audio
+        """
+        return self.new_record
+
     def callback_record(self, event):
         '''
         Callback for start recording
         '''
-        dirname = os.path.dirname(self.wave_output_filename)
-        fname_embd = f"{dirname}/embedding.npy"
-        if os.path.exists(fname_embd):
-            os.remove(fname_embd)
+        self.new_record = True
         if self.lock_button == 0:
             self.lock_button = 1
             plt.figure(self.fig)

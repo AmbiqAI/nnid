@@ -61,7 +61,7 @@ Arguments:
 ### `Training phase`
 To train the NNID model, type
 ```cmd
-$ python train_nnid.py --nn_arch='nn_arch/def_id_nn_arch100_ti.txt' --epoch_loaded=`random` --learning_rate=4 * 10**-4
+$ python train_nnid.py --nn_arch='nn_arch/def_id_nn_arch100_ti.txt' --epoch_loaded=`random` --learning_rate=4*10**-4
 ```
 Arguments:
   * nn_arch : the definition of neural net (NN) architecture. In this case, the architecture is defined in [here](nn_arch/def_id_nn_arch100_ti.txt)
@@ -69,7 +69,7 @@ Arguments:
     * 'random' : random initialization of the weight table
     * 'latest' : the weight table is loaded in the latest epoch which was already trained
     * 102       : the weight table is loaded in epoch 102 in this example. You can also put any the number of epoch (integer) that was trained
-  * learning_rate : the learning rate, which is 4*10**-4 in this example
+  * learning_rate : the learning rate, which is `4*10**-4` in this example
 ### `Testing phase`
 See the `Quick start` section
 # Convert TF-model to C table

@@ -165,8 +165,10 @@ class NNInferClass:
         self.feats = np.concatenate((self.feats, np.expand_dims(feat, axis=0)), axis=0)
         return feat, spec
 
-    def frame_proc_tf(self, data,
-                    return_all=False):
+    def frame_proc_tf(
+            self, data,
+            return_all=False,
+            thresh_prob=0.5):
         """
         NN frame process using tensorflow
         """
@@ -177,7 +179,7 @@ class NNInferClass:
 
             est, self.states = self.nn_infer(feats_expand, 1.0, self.states, training=False)
             est = est[0,0].numpy()
-            self.post_nn_infer(est)
+            self.post_nn_infer(est, thresh_prob=thresh_prob)
         if return_all:
             return feat, spec, est
         else:        
