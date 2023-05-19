@@ -89,25 +89,25 @@ To resolve this deficiency,
 ## C table conversion
  To convert the trained model by Tensorflow to C table, type:
 ```cmd
-  $ python c_code_table_converter.py --epoch_loaded=62 --nn_arch='nn_arch/def_se_nn_arch72_mel.txt' --net_id=3 --net_name='se'
+  $ python c_code_table_converter.py --epoch_loaded=102 --nn_arch='nn_arch/def_id_nn_arch100_ti.txt' --net_id=4 --net_name='nnid'
 ```
-  * Here we provide an already trained model. Its nn architecture is defined in `nn_arch/def_se_nn_arch72_mel.txt`. You can change to your own model later.
-  * The argument `--s2i_nn_arch='nn_arch/def_se_nn_arch72_mel.txt'` will load the definition of NN architecture in `nn_arch/def_se_nn_arch72_mel.txt`. 
-  * The argument `--epoch_loaded=62` means it will load the model saved in epoch = 800.
-  * The argument `--net_name='se'` provides the this neural net a specific name. This is very important if you use sevearal NNs.Ensure that you only assign each NN one and only one `net_name`.
-  * The argument `--net_id=3` provides the NN an identification. Ensure that you only assign each NN one and only one `net_id`.
+  * Here we provide an already trained model. Its nn architecture is defined in `nn_arch/def_id_nn_arch100_ti.txt`. You can change to your own model later.
+  * The argument `--nn_arch='nn_arch/def_id_nn_arch100_ti.txt'` will load the definition of NN architecture in `nn_arch/def_id_nn_arch100_ti.txt`. 
+  * The argument `--epoch_loaded=102` means it will load the model saved in epoch = 102.
+  * The argument `--net_name='nnid'` provides the this neural net a specific name. This is very important if you use sevearal NNs.Ensure that you only assign each NN one and only one `net_name`.
+  * The argument `--net_id=4` provides the NN an identification. Ensure that you only assign each NN one and only one `net_id`.
   
   After execute `c_code_table_converter.py`, you can see that it generates two files as below
   ```cmd
-../evb/src/def_nn3_se.h
-../evb/src/def_nn3_se.c
+../evb/src/def_nn4_nnid.h
+../evb/src/def_nn4_nnid.c
   ```
 Note that the header (\*.h) and the source file (\*.c) follow the rules below 
 ```c
 def_nn{net_id}_{net_name}.h and
 def_nn{net_id}_{net_name}.c
 ```
-The `def_nn3_se.c` saves the set of weight tables and its NN architecture in this neural net, called `nn3_se` here.
+The `def_nn4_nnid.c` saves the set of weight tables and its NN architecture in this neural net, called `nn4_nnid` here.
 
 # Deploy to Apollo4
 See [README.md](../README.md) here.
