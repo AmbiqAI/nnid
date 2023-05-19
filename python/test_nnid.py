@@ -8,11 +8,10 @@ import numpy as np
 import soundfile as sf
 import sounddevice as sd
 import librosa
+from data_nnid_ti import params_audio as PARAM_AUDIO, MAX_FRAMES
 from nnsp_pack.nn_infer_nnid import NNIDClass
 from nnsp_pack.pyaudio_animation import AudioShowClass
-from data_nnid_ti import params_audio as PARAM_AUDIO, MAX_FRAMES
 from nnsp_pack.nn_infer_vad import VadClass
-
 
 SHOW_HISTOGRAM  = False
 NP_INFERENCE    = False
@@ -48,7 +47,7 @@ def main(args):
                     nn_arch_vad,
                     epoch_loaded_vad,
                     params_audio_vad,
-                    quantized = True,
+                    quantized       = True,
                     show_histogram  = False,
                     np_inference    = False
                     )
@@ -89,8 +88,7 @@ def main(args):
                     orig_sr=sample_rate,
                     target_sr=params_audio_vad['sample_rate'])
             vad_inst.reset()
-            vad_triggers, start = vad_inst.blk_proc(data_vad, thresh_prob =0.5)
-            # start, _ = get_vad_to_NNID(vad_triggers)
+            _, start = vad_inst.blk_proc(data_vad, thresh_prob =0.5)
 
             # generate embedding
             nnid_inst.reset()
@@ -145,7 +143,7 @@ def main(args):
                 orig_sr=sample_rate,
                 target_sr=params_audio_vad['sample_rate'])
         vad_inst.reset()
-        vad_triggers, start = vad_inst.blk_proc(
+        _, start = vad_inst.blk_proc(
             data_vad, thresh_prob =0.5, show_fig=False)
 
         # speaker verification

@@ -1,3 +1,6 @@
+"""
+VAD module including feature extraction and inference
+"""
 import wave
 import time
 import numpy as np
@@ -127,9 +130,9 @@ class VadClass(NNInferClass):
         feats = np.array(feats)
         specs = np.array(specs)
 
-        zz = np.zeros((params_audio['hop']*2,))
-        data = np.concatenate((data,zz))
-        probs = np.concatenate((zz,probs))
+        zeros = np.zeros((params_audio['hop']*2,))
+        data = np.concatenate((data,zeros))
+        probs = np.concatenate((zeros,probs))
         out = np.empty(
                 (data.size + triggers.size + params_audio['hop'] * 2,),
                 dtype=data.dtype)
