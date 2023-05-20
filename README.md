@@ -41,12 +41,12 @@ From the `nnid/evb/` directory:
    ```
    You should see a GUI popping out.
    You might need to change the option `--tty` depending on your OS.
-7. On your GUI, prress `record` to start recording to enter the `enrollment phase`. 
+7. On your GUI, press `record` to start recording to enter the `enrollment phase`. 
     * The GUI will show you have `0/4` utterances in enrollment as shown in `Fig. 1.1`. The `0/4` means there will be total 4 utterances to be record, and there is 0 utterance recorded now.
     * You can start to say something. Try to make your uterance last around 2 seconds. If your speech is detected, the GUI will show you have `1/4` utterances in enrollment as shown in `Fig. 1.2`. This means you'd successfully enrolled the first utterances. Keep say something and repeat the process until all 4 utterances are enrolled.
     * After all 4 utterances are enrolled, GUI will show you are in the `testing phase` in `Fig. 1.3`.
     * In the `testing phase`, try to say something and try to make your utterance last around 2 seconds. If your voice is verified, GUI will show `Yes, verified` in `Fig. 1.4`. Conversely, if your voice is not verified, GUI will show `No, not verified` on the top of GUI.
-    * You can repeat testing (try to say something again to seee whether your voice is verified)
+    * You can repeat testing (try to say something again to see whether your voice is verified)
      If you want to stop the program, just press the `stop` button.
     * Check the two recording files under `nnid/evb/audio_result/`. 
       - `audio_raw.wav`: the raw PCM data from your mic.
@@ -87,12 +87,12 @@ Our approach to training the model can be found in [README.md](./python/README.m
 ## Library NS-NNSP Library Overview
 Library neuralspot NNSP, `ns-nnsp.a`, is a C library to build a pipeline including feature extraction and neural network to run on Apollo4. The source code is under the folder `ns-nnsp/`. You can modify or rebuild it via [NeuralSPOT Ambiq's AI Enablement Library](https://github.com/AmbiqAI/neuralSPOT).
 In brief, there are two basic building blocks inside `ns-nnsp.a`, feature extraction and neural network. In `ns-nnsp.a`, we call them `FeatureClass` defined in `feature_module.h` and `NeuralNetClass` in `neural_nets.h`, respectively. Furthermore, `NNSPClass` in `nn_speech.h` encapsulates them to form a concrete instance.
-We illustrate this in Fig. 1. 
+We illustrate this in Fig. 2. 
 <p align="center">
   <img src="./pics/nnsp_flow.jpg"  width="80%">
 </p>
 <p align="center">
-  Fig. 1: Illustration of `ns-nnsp`
+  Fig. 2: Illustration of `ns-nnsp`
 </p>
 
 Also, in our specific s2i NN case, `def_nn0_s2i.c` has two purposes:
@@ -132,7 +132,7 @@ modules      += extern/erpc/$(ERPC_VERSION)
 ```
 4. Compile
 ```bash
-$ make clean; make; make nest
+$ make clean; make; make nestall
 ```
 5. Copy the necessary folders back to `nnid` folder
 ```bash
