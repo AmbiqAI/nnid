@@ -170,19 +170,29 @@ class VisualDataClass:
     """
     Visual the audio data from EVB
     """
-    def __init__(self, databuf, lock, is_record, event_stop, cyc_count, enroll_ind):
+    def __init__(
+            self,
+            databuf,
+            lock,
+            is_record,
+            event_stop,
+            cyc_count,
+            enroll_ind,
+            thres_nnid = 0.8):
+
         self.databuf = databuf
         self.lock    = lock
         self.is_record = is_record
         self.event_stop = event_stop
         self.cyc_count = cyc_count
         self.enroll_ind = enroll_ind
+        self.thres_nnid = thres_nnid
         secs2show = FRAMES_TO_SHOW * HOP_SIZE/SAMPLING_RATE
         self.xdata = np.arange(FRAMES_TO_SHOW * HOP_SIZE) / SAMPLING_RATE
         self.fig, self.ax_handle = plt.subplots()
         self.fig.canvas.mpl_connect('close_event', self.handle_close)
         plt.subplots_adjust(bottom=0.35)
-        self.title_handle = plt.title("")
+        self.title_handle = plt.title("Click 'record' button to start the enrollment")
 
         self.lock.acquire()
         np_databuf = databuf[0:]
@@ -242,6 +252,7 @@ class VisualDataClass:
         self.lock.acquire()
         self.is_record[0] = 0
         self.lock.release()
+        self.title_handle.set_text("Click 'record' button to start the enrollment")
         if event.inaxes is not None:
             event.inaxes.figure.canvas.draw_idle()
 
@@ -273,12 +284,12 @@ class VisualDataClass:
                     self.title_handle.set_text(f"Enroll phase: you have {acc_num_enroll} / 4 utterances in enrollment. \nPlease say something") # pylint: disable=line-too-long
                 elif enroll_state==TEST_PHASE:
                     corr_f = float(corr) / 32768
-                    if corr_f > 0.8:
-                        self.title_handle.set_text(f"Tesing phase: Yes, verified. corr = {corr_f:.2f}") # pylint: disable=line-too-long
+                    if corr_f > self.thres_nnid:
+                        self.title_handle.set_text(f"Tesing phase: Yes, verified.\ncorr = {corr_f:.2f}, th = {self.thres_nnid:.2f}") # pylint: disable=line-too-long
                     elif corr_f < 0:
                         self.title_handle.set_text("Tesing phase: entered test phase. Please say something") # pylint: disable=line-too-long
                     else:
-                        self.title_handle.set_text(f"Tesing phase: No, not verified. corr = {corr_f:.2f}") # pylint: disable=line-too-long
+                        self.title_handle.set_text(f"Tesing phase: No, not verified.\ncorr = {corr_f:.2f}, th = {self.thres_nnid:.2f}") # pylint: disable=line-too-long
                 plt.pause(0.05)
                 self.lock.acquire()
                 is_record = self.is_record[0]
@@ -288,11 +299,11 @@ class VisualDataClass:
         if event.inaxes is not None:
             event.inaxes.figure.canvas.draw_idle()
 
-def target_proc_draw(databuf, lock, recording, event_stop, cyc_count, enroll_ind):
+def target_proc_draw(databuf, lock, recording, event_stop, cyc_count, enroll_ind, thres_nnid=0.8):
     """
     one of multiprocesses: draw
     """
-    VisualDataClass(databuf, lock, recording, event_stop, cyc_count, enroll_ind)
+    VisualDataClass(databuf, lock, recording, event_stop, cyc_count, enroll_ind, thres_nnid)
 
 def target_proc_evb2pc(tty, baud, databuf, wavout, lock, is_record, cyc_count, enroll_ind):
     """
@@ -322,7 +333,13 @@ def main(args):
     # 2. proc_evb2pc : to capture data from evb and recording
     proc_draw   = Process(
                     target = target_proc_draw,
-                    args   = (databuf,lock, record_ind, event_stop, cyc_count, enroll_ind))
+                    args   = (databuf,
+                              lock,
+                              record_ind,
+                              event_stop,
+                              cyc_count,
+                              enroll_ind,
+                              args.thres_nnid))
     proc_evb2pc = Process(
                     target = target_proc_evb2pc,
                     args   = (  args.tty,
@@ -361,6 +378,15 @@ if __name__ == "__main__":
         default = "115200",
         help    = "Baud (default value is 115200)"
     )
+
+    argParser.add_argument(
+        "-th",
+        "--thres_nnid",
+        default = 0.8,
+        type    = float,
+        help    = "threshold for nnid"
+    )
+
     argParser.add_argument(
         "-o",
         "--out",

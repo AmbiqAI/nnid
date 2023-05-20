@@ -41,7 +41,7 @@ From the `nnid/evb/` directory:
    ```
    You should see a GUI popping out.
    You might need to change the option `--tty` depending on your OS.
-7. On your GUI, press `record` to start recording to enter the `enrollment phase`. 
+7. On your GUI, press `record` to start recording. This will lead you to enter the `enrollment phase`. 
     * The GUI will show you have `0/4` utterances in enrollment as shown in `Fig. 1.1`. The `0/4` means there will be total 4 utterances to be record, and there is 0 utterance recorded now.
     * You can start to say something. Try to make your uterance last around 2 seconds. If your speech is detected, the GUI will show you have `1/4` utterances in enrollment as shown in `Fig. 1.2`. This means you'd successfully enrolled the first utterances. Keep say something and repeat the process until all 4 utterances are enrolled.
     * After all 4 utterances are enrolled, GUI will show you are in the `testing phase` in `Fig. 1.3`.
