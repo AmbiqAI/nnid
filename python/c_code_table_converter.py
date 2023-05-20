@@ -495,7 +495,7 @@ if __name__ == "__main__":
 
     argparser.add_argument(
         '--folder_c',
-        default= ".",
+        default= "../evb/src",
         type=str,
         help='C folder')
 

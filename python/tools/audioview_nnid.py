@@ -62,7 +62,7 @@ class DataServiceClass:
                 wavfile.write("audio_result/audio_raw.wav", samplerate, sig1.astype(np.int16))
 
                 sig2 = sig[:,1].flatten()
-                wavfile.write("audio_result/audio_se.wav", samplerate, sig2.astype(np.int16))
+                wavfile.write("audio_result/audio_debug.wav", samplerate, sig2.astype(np.int16))
 
                 self.wavefile = None
                 print('Stop recording')

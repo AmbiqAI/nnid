@@ -34,8 +34,7 @@ From the `nnid/evb/` directory:
 2. `make`
 3. `make deploy` Prepare two USB cables. Ensure your board is connected via both the `JLINK USB port` and the `audio USB port`. Then turn on the power on EVB.
 4. Plug a mic into the 3.5mm port, and push BTN0 to initiate voice recording
-5. `make view` will provide SWO output as the device is running, showing 
-   predicted slots/intents etc.
+5. `make view` will provide SWO output as the device is running.
 6. On your cmd, type
    ```cmd
    $ python ../python/tools/audioview_nnid.py --tty=/dev/tty.usbmodem1234561
@@ -45,7 +44,7 @@ From the `nnid/evb/` directory:
 7. On your GUI, prress `record` to start recording and `stop` to stop recording. 
 8. Check the two recording files under `nnse/evb/audio_result/`. 
    - `audio_raw.wav`: the raw PCM data from your mic.
-   - `audio_se.wav`: the enhanced speech.
+   - `audio_debug.wav`: the debug infomation.
 
 ## Re-Training a New Model
 
