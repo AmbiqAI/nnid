@@ -1,4 +1,4 @@
-# NN Speech Enhancement
+# NN Identification
 NN Speaker ID (NNID) is a speech identification/verification model (SE) based on recurrent neural networks (RNN).
 ## Directory contents
 ```py
@@ -21,11 +21,11 @@ nnid/ # root
 To work on Apollo4, you need
 - Arm GNU Toolchain 11.3
 - Segger J-Link v7.56+
-# Speech Enhancement
-This speech enhancement model is based on 16kHZ sampling rate. The model size is about 100kB.
+# Speaker Identification
+This speaker identification model is based on 16kHZ sampling rate. The model size is about 110kB. Also, it includes one VAD (voice activity detection) model as a preprocessing.
 
 ### `Dataset`
-The SE model is trained based on several audio dataset, including human speech and noises. Before you use this repo, please read on their license agreements carefully in [here](./docs/README.md).
+The NNID model is trained based on several audio dataset, including human speech and noises. Before you use this repo, please read on their license agreements carefully in [here](./docs/README.md).
 
 ## Compiling and Running a Pre-Trained Model
 From the `nnid/evb/` directory:
