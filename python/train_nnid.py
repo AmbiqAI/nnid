@@ -19,7 +19,7 @@ from nnsp_pack.calculate_feat_stats_nnid import feat_stats_estimator
 from nnsp_pack.load_nn_arch import load_nn_arch, setup_nn_folder
 from nnsp_pack.nnid_correlation import gen_target_nnid, get_corr_fast
 import c_code_table_converter
-from data_nnid_ti import NUM_GROUP_PPLS, NUM_SENTS, NOISE_TYPES, SNR_DBS_MIN_MAX
+from data_nnid import NUM_GROUP_PPLS, NUM_SENTS, NOISE_TYPES, SNR_DBS_MIN_MAX
 
 physical_devices    = tf.config.list_physical_devices('GPU')
 try:

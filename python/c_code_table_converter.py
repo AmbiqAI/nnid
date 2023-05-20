@@ -11,14 +11,14 @@ from nnsp_pack import c_weight_man
 from nnsp_pack.nn_module_nnid import NeuralNetClass
 from nnsp_pack.load_nn_arch import load_nn_arch, setup_nn_folder
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-# from data_nnid_ti import params_audio as PARAMS_AUDIO
-PARAMS_AUDIO = {
-    'win_size'      : 480,
-    'hop'           : 160,
-    'len_fft'       : 512,
-    'sample_rate'   : 16000,
-    'nfilters_mel'  : 40
-}
+from data_nnid import params_audio as PARAMS_AUDIO
+# PARAMS_AUDIO = {
+#     'win_size'      : 480,
+#     'hop'           : 160,
+#     'len_fft'       : 512,
+#     'sample_rate'   : 16000,
+#     'nfilters_mel'  : 40
+# }
 def float2fix(data_in, nfrac, bitwidth):
     """
     Floating point to int

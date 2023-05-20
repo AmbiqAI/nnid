@@ -8,7 +8,7 @@ import numpy as np
 import soundfile as sf
 import sounddevice as sd
 import librosa
-from data_nnid_ti import params_audio as PARAM_AUDIO, MAX_FRAMES
+from data_nnid import params_audio as PARAM_AUDIO, MAX_FRAMES
 from nnsp_pack.nn_infer_nnid import NNIDClass
 from nnsp_pack.pyaudio_animation import AudioShowClass
 from nnsp_pack.nn_infer_vad import VadClass
