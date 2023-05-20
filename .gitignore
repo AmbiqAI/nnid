@@ -16,6 +16,7 @@
 *.lm
 *.pyc
 *.pk
+evb/build/
 wavs/
 python/models_trained/
 nnsp/python/data/*tfrecords*.csv

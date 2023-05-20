@@ -77,7 +77,6 @@ int16_t nnidCntrlClass_exec(
 
 	*pt_corr = pt_nnid->corr;
 	
-	
 	PcmBufClass_setData(&pcmBuf_inst, rawPCM);
 	detected = NNSPClass_exec(&nnst_vad, rawPCM);
 	pt_inst->count_vad_trigger = (detected) ? pt_inst->count_vad_trigger + 1 : 0;
@@ -111,12 +110,9 @@ int16_t nnidCntrlClass_exec(
 				}
 				pt_inst->enroll_state = test_phase;
 			}
-			*pt_corr = 0;
 			pt_nnid->corr = -0.5;
 		}
-		else
-			*pt_corr = pt_nnid->corr;
-	
+		*pt_corr = pt_nnid->corr;
 
 		NNSPClass_reset(&nnst_vad);
 		NNSPClass_reset(&nnst_nnid);

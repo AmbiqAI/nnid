@@ -100,16 +100,16 @@ class DataServiceClass:
                 data = np.frombuffer(pcmBlock.buffer, dtype=np.int16).copy()
                 self.lock.release()
 
-                enroll_state = data[-10]
-                acc_num_enroll = data[-9]
-                corr = data[-8]
+                enroll_state = data[HOP_SIZE*2]
+                acc_num_enroll = data[HOP_SIZE*2+1]
+                corr = data[HOP_SIZE*2+2]
                 self.lock.acquire()
                 self.enroll_ind[0] = enroll_state
                 self.enroll_ind[1] = acc_num_enroll
                 self.enroll_ind[2] = corr
                 self.lock.release()
-                
-                data = data[:-10]
+
+                data = data[:HOP_SIZE*2]
                 data = data.reshape((2, HOP_SIZE)).T.flatten()
                 self.wavefile.writeframesraw(data.tobytes())
 
@@ -183,7 +183,7 @@ class VisualDataClass:
         self.fig.canvas.mpl_connect('close_event', self.handle_close)
         plt.subplots_adjust(bottom=0.35)
         self.title_handle = plt.title("")
-        
+
         self.lock.acquire()
         np_databuf = databuf[0:]
         self.lock.release()
@@ -270,15 +270,15 @@ class VisualDataClass:
                 self.line_data.set_data(self.xdata, np_databuf)
 
                 if enroll_state==ENROLL_PHASE:
-                    self.title_handle.set_text(f"Enroll phase: you have {acc_num_enroll} / 4 utterances in enrollment. \nPlease say something")
+                    self.title_handle.set_text(f"Enroll phase: you have {acc_num_enroll} / 4 utterances in enrollment. \nPlease say something") # pylint: disable=line-too-long
                 elif enroll_state==TEST_PHASE:
                     corr_f = float(corr) / 32768
                     if corr_f > 0.8:
-                        self.title_handle.set_text(f"Tesing phase: Yes, verified. corr = {corr_f:.2f}")
+                        self.title_handle.set_text(f"Tesing phase: Yes, verified. corr = {corr_f:.2f}") # pylint: disable=line-too-long
                     elif corr_f < 0:
-                        self.title_handle.set_text("Tesing phase: entered test phase. Please say something")
+                        self.title_handle.set_text("Tesing phase: entered test phase. Please say something") # pylint: disable=line-too-long
                     else:
-                        self.title_handle.set_text(f"Tesing phase: No, not verified. corr = {corr_f:.2f}")
+                        self.title_handle.set_text(f"Tesing phase: No, not verified. corr = {corr_f:.2f}") # pylint: disable=line-too-long
                 plt.pause(0.05)
                 self.lock.acquire()
                 is_record = self.is_record[0]
