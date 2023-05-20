@@ -48,7 +48,7 @@ From the `nnid/evb/` directory:
     * In the `testing phase`, try to say something and try to make your utterance last around 2 seconds. If your voice is verified, GUI will show `Yes, verified` in `Fig. 1.4`. Conversely, if your voice is not verified, GUI will show `No, not verified` on the top of GUI.
     * You can repeat testing (try to say something again to seee whether your voice is verified)
      If you want to stop the program, just press the `stop` button.
-    * Check the two recording files under `nnse/evb/audio_result/`. 
+    * Check the two recording files under `nnid/evb/audio_result/`. 
       - `audio_raw.wav`: the raw PCM data from your mic.
       - `audio_debug.wav`: the debug infomation.
 <p align="center">
