@@ -100,7 +100,7 @@ modules      += extern/erpc/$(ERPC_VERSION)
 ```bash
 $ make clean; make; make nest
 ```
-5. Copy the necessary folders back to `nnsp` folder
+5. Copy the necessary folders back to `nnid` folder
 ```bash
-$ cd nest; cp -a pack includes libs ../nnsp/evb
+$ cd nest; cp -a pack includes libs ../nnid/evb
 ```
