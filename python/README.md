@@ -1,5 +1,5 @@
-# Neural net identification (NNID) model
-This document explains how to train speaker identification (speaker verfication) by using recurrent neural network. Specially, we use the `text-independent` model as an example since it is free and can be easily acquired.
+# Neural Net Speaker Identification (NNID) model
+This document explains how to train speaker identification (speaker verfication) by using recurrent neural network. Specially, we use the `text-independent` model as an example since the data is free and can be easily acquired.
 ## Prerequisite
 Note that all python scripts described here are all under the folder `nnid/python`
 - Python 3.7+
@@ -52,7 +52,7 @@ Fig. 1: A GUI interface for speaker verification enrollment. In the title it sho
 ### `Data generation phase`
 To generate the training data (features and targets), type
 ```cmd
-$ python data_nnid_ti.py --download=1
+$ python data_nnid.py --download=1
 ```
 Arguments:
   * download:
