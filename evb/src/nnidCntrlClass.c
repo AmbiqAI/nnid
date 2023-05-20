@@ -7,7 +7,7 @@
 #include "nnid_class.h"
 #include "PcmBufClass.h"
 #include "nnidCntrlClass.h"
-
+#include <math.h>
 FeatureClass feat_vad, feat_nnid;
 NNSPClass nnst_vad, nnst_nnid;
 PcmBufClass pcmBuf_inst;
@@ -63,6 +63,38 @@ void nnidCntrlClass_init(nnidCntrlClass* pt_inst)
 		&params_nn4_nnid);
 }
 
+void norm_then_ave(
+	int32_t *outputs,
+	int32_t *inputs,
+	int num_sents,
+	int len_vec)
+{
+	float acc;
+	float norm[4];
+	
+	for (int i =  0; i < num_sents; i++)
+	{
+		norm[i] = 0;
+		for (int j=0; j < len_vec; j++)
+		{
+			acc = 3.0518e-05 * ((float) inputs[i*len_vec + j]);
+			norm[i] += acc * acc; 
+		}
+		norm[i] = 1.0f / sqrtf(norm[i]);
+	}
+
+	for (int i =  0; i < len_vec; i++)
+	{
+		acc = 0;
+		for (int j = 0; j < num_sents; j++)
+		{
+			acc += norm[j] * 3.0518e-05 * ((float) inputs[j*len_vec + i]);
+		}
+		acc *= 0.25;
+		outputs[i] = (int32_t) (acc * 32768.0f);
+	}
+}
+
 int16_t nnidCntrlClass_exec(
 			nnidCntrlClass* pt_inst,
 			int16_t *rawPCM,
@@ -72,7 +104,6 @@ int16_t nnidCntrlClass_exec(
 	NNID_CLASS* pt_nnid;
 	int16_t is_get_corr = 0;
 	static int32_t embds[4 * 64];
-	int32_t tmp32;
 	pt_nnid = (NNID_CLASS*) nnst_nnid.pt_state_nnid;
 
 	*pt_corr = pt_nnid->corr;
@@ -99,16 +130,19 @@ int16_t nnidCntrlClass_exec(
 		}
 		if (pt_inst->enroll_state == enroll_phase)
 		{
-			NNSPClass_get_nn_out(embds + pt_inst->acc_num_enroll * pt_nnid->dim_embd,pt_nnid->dim_embd);
+			NNSPClass_get_nn_out(
+				embds + pt_inst->acc_num_enroll * pt_nnid->dim_embd,
+				pt_nnid->dim_embd);
 			pt_inst->acc_num_enroll+=1;
 			if (pt_inst->acc_num_enroll == pt_inst->num_enroll)
 			{
-				for (int i = 0; i < pt_nnid->dim_embd; i++)
-				{
-					tmp32 = *(embds+i) + *(embds+i + pt_nnid->dim_embd) + *(embds+i + pt_nnid->dim_embd*2) + *(embds+i + pt_nnid->dim_embd*3);
-					pt_nnid->pt_embd[i] = tmp32 >> 2;
-				}
+				norm_then_ave(
+					pt_nnid->pt_embd,
+					embds,
+					pt_inst->num_enroll,
+					pt_nnid->dim_embd);
 				pt_inst->enroll_state = test_phase;
+
 			}
 			pt_nnid->corr = -0.5;
 		}

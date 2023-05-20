@@ -24,13 +24,20 @@ typedef struct
 	int8_t num_enroll;
 }nnidCntrlClass;
 
-
 void nnidCntrlClass_reset(nnidCntrlClass* pt_inst);
+
 void nnidCntrlClass_init(nnidCntrlClass *pt_inst);
+
 int16_t nnidCntrlClass_exec(
 	nnidCntrlClass* pt_inst,
 	int16_t* rawPCM,
 	float* pt_corr);
+	
+void norm_then_ave(
+	int32_t *outputs,
+	int32_t *inputs,
+	int num_sents,
+	int len_vec);
 #ifdef __cplusplus
 }
 #endif
