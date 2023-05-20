@@ -47,8 +47,10 @@ From the `nnid/evb/` directory:
     * After all 4 utterances are enrolled, GUI will show you are in the `testing phase` in `Fig. 1.3`.
     * In the `testing phase`, try to say something and try to make your utterance last around 2 seconds. If your voice is verified, GUI will show `Yes, verified` in `Fig. 1.4`. Conversely, if your voice is not verified, GUI will show `No, not verified` on the top of GUI.
     * You can repeat testing (try to say something again to seee whether your voice is verified)
-    * If you want to stop the program, just press the `stop` button or close the GUI window.
-
+     If you want to stop the program, just press the `stop` button.
+    * Check the two recording files under `nnse/evb/audio_result/`. 
+      - `audio_raw.wav`: the raw PCM data from your mic.
+      - `audio_debug.wav`: the debug infomation.
 <p align="center">
   <img src="./pics/start.png"  width="80%">
 </p>
@@ -76,9 +78,6 @@ From the `nnid/evb/` directory:
 <p align="center">
   Fig. 1.4: in the testing phase, try to say something and try to make your utterance last around 2 seconds. If your voice is verified, GUI will show `Yes, verified`.
 </p>
-8. Check the two recording files under `nnse/evb/audio_result/`. 
-   - `audio_raw.wav`: the raw PCM data from your mic.
-   - `audio_debug.wav`: the debug infomation.
 
 ## Re-Training a New Model
 
