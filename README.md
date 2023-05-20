@@ -1,5 +1,5 @@
 # NN Identification
-NN Speaker ID (NNID) is a speech identification/verification model (SE) based on recurrent neural networks (RNN).
+NN Speaker ID (NNID) is a speaker identification/verification model based on recurrent neural networks (RNN).
 ## Directory contents
 ```py
 nnid/ # root 
@@ -49,7 +49,7 @@ From the `nnid/evb/` directory:
 
 ## Re-Training a New Model
 
-Our approach to training the model can be found in [README.md](./python/README.md). The trained model is saved in [evb/src/def_nn3_se.c](evb/src/def_nn3_se.c) and [evb/src/def_nn3_se.h](evb/src/def_nn3_se.h). 
+Our approach to training the model can be found in [README.md](./python/README.md). The trained model is saved in [evb/src/def_nn4_nnid.c](evb/src/def_nn4_nnid.c) and [evb/src/def_nn4_nnid.h](evb/src/def_nn4_nnid.h). 
 
 ## Library NS-NNSP Library Overview
 Library neuralspot NNSP, `ns-nnsp.a`, is a C library to build a pipeline including feature extraction and neural network to run on Apollo4. The source code is under the folder `ns-nnsp/`. You can modify or rebuild it via [NeuralSPOT Ambiq's AI Enablement Library](https://github.com/AmbiqAI/neuralSPOT).
