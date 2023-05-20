@@ -1,8 +1,8 @@
 # NN Speech Enhancement
-NN Speech Enhancement (NNSE) is a speech enhancement model (SE) based on recurrent neural networks (RNN).
+NN Speaker ID (NNID) is a speech identification/verification model (SE) based on recurrent neural networks (RNN).
 ## Directory contents
 ```py
-nnse/ # root 
+nnid/ # root 
     evb/ # for evb deployment
         build/      # bin files
         includes/   # required inlcudes
@@ -28,7 +28,7 @@ This speech enhancement model is based on 16kHZ sampling rate. The model size is
 The SE model is trained based on several audio dataset, including human speech and noises. Before you use this repo, please read on their license agreements carefully in [here](./docs/README.md).
 
 ## Compiling and Running a Pre-Trained Model
-From the `nnse/evb/` directory:
+From the `nnid/evb/` directory:
 
 1. `make clean`
 2. `make`
@@ -38,7 +38,7 @@ From the `nnse/evb/` directory:
    predicted slots/intents etc.
 6. On your cmd, type
    ```cmd
-   $ python ../python/tools/audioview_se.py --tty=/dev/tty.usbmodem1234561
+   $ python ../python/tools/audioview_nnid.py --tty=/dev/tty.usbmodem1234561
    ```
    You should see a GUI popping out.
    You might need to change the option `--tty` depending on your OS.
