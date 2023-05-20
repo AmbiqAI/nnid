@@ -51,6 +51,7 @@ From the `nnid/evb/` directory:
     * Check the two recording files under `nnid/evb/audio_result/`. 
       - `audio_raw.wav`: the raw PCM data from your mic.
       - `audio_debug.wav`: the debug infomation.
+    * You can restart the program by pressing `record` button. You will enter the `enrollment phase` again. 
 <p align="center">
   <img src="./pics/start.png"  width="80%">
 </p>
