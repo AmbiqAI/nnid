@@ -15,14 +15,14 @@ from nnsp_pack.nn_infer_vad import VadClass
 
 SHOW_HISTOGRAM  = False
 NP_INFERENCE    = False
-
+EPS = 10**-5
 def cos_score(vec0, vec1):
     """
     calculate cosine score
     """
     norm_vec0 = np.sum(vec0**2)
     norm_vec1 = np.sum(vec1**2)
-    score = np.sum(vec0 * vec1) / np.sqrt(np.maximum(norm_vec0 * norm_vec1, 10**-5))
+    score = np.sum(vec0 * vec1) / np.sqrt(np.maximum(norm_vec0 * norm_vec1, EPS))
     return score
 
 def main(args):
@@ -107,7 +107,7 @@ def main(args):
                 name_wavout=name_wavout)
             embds += [embd]
         embds = np.array(embds)
-        embds /= np.sqrt(np.maximum(np.sum(embds**2, keepdims=True, axis=-1),10**-5))
+        embds /= np.sqrt(np.maximum(np.sum(embds**2, keepdims=True, axis=-1),EPS))
         embd_spk = np.mean(embds, axis=0)
         np.save(fname_embd, embd_spk)
     else:
@@ -129,7 +129,7 @@ def main(args):
                 wavfile = re.sub(r"\\", '/', wavfile)
                 wavefiles += [wavfile]
 
-    for wavefile in wavefiles:
+    for i, wavefile in enumerate(wavefiles):
         print("/-------------------------------------------/")
         print(f"wavefile : {wavefile}")
 
@@ -145,7 +145,6 @@ def main(args):
         vad_inst.reset()
         _, start = vad_inst.blk_proc(
             data_vad, thresh_prob =0.5, show_fig=False)
-
         # speaker verification
         nnid_inst.reset()
         if sample_rate > PARAM_AUDIO['sample_rate']:
@@ -155,7 +154,9 @@ def main(args):
                 target_sr=PARAM_AUDIO['sample_rate'])
 
         data = data[start * PARAM_AUDIO['hop'] : (start+MAX_FRAMES) * PARAM_AUDIO['hop']]
-
+        if i == 0:
+            wavefile_chop = re.sub(r"\.wav", "_chop.wav", wavefile)
+            sf.write(f"{wavefile_chop}", data, PARAM_AUDIO['sample_rate'])
         sd.play(data, PARAM_AUDIO['sample_rate'])
 
         os.makedirs("test_results", exist_ok=True)
@@ -164,7 +165,11 @@ def main(args):
             data,
             name_wavout=name_wavout,
             show_stft=False)
-        score = cos_score(embd_spk, embd_test)
+
+        embd_spk = (embd_spk * 2**15).astype(np.int32)
+        embd_test = (embd_test * 2**15).astype(np.int32)
+
+        score = cos_score(embd_spk / 2**15, embd_test / 2**15)
         print(f"score = {score}")
 
         if score >= threshold:

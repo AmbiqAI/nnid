@@ -86,9 +86,7 @@ class NNIDClass(NNInferClass):
         stime = time.time()
         for i in range(bks):
             data_frame = data[i*params_audio['hop'] : (i+1) * params_audio['hop']]
-
             feat, spec, embd = self.frame_proc_tf(data_frame, return_all=True)
-
             if self.cnt_vad_trigger[self.vad_trigger] >= 1:
                 print(f'\rFrame {i}: trigger', end="")
             else:

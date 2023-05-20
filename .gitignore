@@ -1,5 +1,10 @@
 *.o
 *.d
+*.jlink
+*.bin
+*.lst
+*.map
+*.size
 *.wav
 *.tfrecord
 *.flac

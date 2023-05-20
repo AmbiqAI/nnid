@@ -11,7 +11,14 @@ from nnsp_pack import c_weight_man
 from nnsp_pack.nn_module_nnid import NeuralNetClass
 from nnsp_pack.load_nn_arch import load_nn_arch, setup_nn_folder
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
+# from data_nnid_ti import params_audio as PARAMS_AUDIO
+PARAMS_AUDIO = {
+    'win_size'      : 480,
+    'hop'           : 160,
+    'len_fft'       : 512,
+    'sample_rate'   : 16000,
+    'nfilters_mel'  : 40
+}
 def float2fix(data_in, nfrac, bitwidth):
     """
     Floating point to int
@@ -176,7 +183,8 @@ def converter(  net_tf,
                 nn_name = 'nn_model',
                 make_c_table = True,
                 folder_c = ".",
-                arm_M4 = True):
+                arm_M4 = True,
+                num_dnsampl=1):
     """
     Convert tensor in NN to c code
     """
@@ -195,9 +203,11 @@ def converter(  net_tf,
             file.write(f'#define __DEF_NN{nn_id}_{nn_name.upper()}__\n')
             file.write('#include <stdint.h>\n')
             file.write('#include "neural_nets.h"\n')
+            file.write('#include "nn_speech.h"\n')
             file.write(f'extern const int32_t feature_mean_{nn_name}[];\n')
             file.write(f'extern const int32_t feature_stdR_{nn_name}[];\n')
             file.write(f'extern NeuralNetClass net_{nn_name};\n' )
+            file.write(f'extern PARAMS_NNSP params_nn{nn_id}_{nn_name};\n' )
             file.write('#endif\n')
 
         #--------------Header-----------------#
@@ -209,6 +219,18 @@ def converter(  net_tf,
             file.write('#include "activation.h"\n')
             file.write('#include "affine.h"\n')
             file.write('#include "lstm.h"\n')
+            file.write('#include "nn_speech.h"\n')
+            file.write(f"extern const int16_t stft_win_coeff_w{PARAMS_AUDIO['win_size']}_h{PARAMS_AUDIO['hop']}[];\n")
+            file.write(f"PARAMS_NNSP params_nn{nn_id}_{nn_name} = {{\n")
+            file.write(f"\t.samplingRate = {PARAMS_AUDIO['sample_rate']},\n")
+            file.write(f"\t.fftsize = {PARAMS_AUDIO['len_fft']},\n")
+            file.write(f"\t.winsize_stft = {PARAMS_AUDIO['win_size']},\n")
+            file.write(f"\t.hopsize_stft = {PARAMS_AUDIO['hop']},\n")
+            file.write(f"\t.num_mfltrBank = {PARAMS_AUDIO['nfilters_mel']},\n")
+            file.write(f"\t.num_dnsmpl = {num_dnsampl},\n")
+            file.write(f"\t.pt_stft_win_coeff = stft_win_coeff_w{PARAMS_AUDIO['win_size']}_h{PARAMS_AUDIO['hop']},\n")
+            file.write('};\n')
+            
             #-----------------stats---------------------------------
             file.write('/*************stats***********/\n')
             file.write(f'const int32_t feature_mean_{nn_name}[] = {{')
@@ -444,7 +466,8 @@ def main(args):
             nn_name = nn_name,
             nn_id   = nn_id,
             folder_c= folder_c,
-            arm_M4  = True
+            arm_M4  = True,
+            num_dnsampl=num_dnsampl
             )
 
     print(f'\nweight table is generated in \n{fname_inc}\n{fname_c}')
@@ -457,17 +480,17 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-a',
         '--nn_arch',
-        default='nn_arch/def_id_nn_arch100_ti.txt',
+        default='nn_arch/def_vad_nn_arch.txt',
         help='nn architecture')
 
     argparser.add_argument(
         '--epoch_loaded',
-        default= 102,
+        default= 811,
         help='starting epoch')
 
     argparser.add_argument(
         '--net_id',
-        default= 4,
+        default= 1,
         help='starting epoch')
 
     argparser.add_argument(
@@ -478,7 +501,7 @@ if __name__ == "__main__":
 
     argparser.add_argument(
         '--net_name',
-        default= 'nnid',
+        default= 'nnvad',
         help='starting epoch')
 
     main(argparser.parse_args())
