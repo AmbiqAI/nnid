@@ -10,7 +10,7 @@ extern "C"
 typedef struct 
 {
     int16_t *pcm_buffer;
-    int16_t idx_set;
+    int16_t idx_frame_set;
     int16_t num_frs;
     int16_t smpls_fr;
 }PcmBufClass;

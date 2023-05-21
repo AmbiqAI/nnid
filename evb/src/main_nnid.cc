@@ -245,11 +245,11 @@ int main(void) {
                         &corr);
                     *pt_enroll = (int16_t) cntrl_inst.enroll_state;
                     *pt_acc_num_enroll = (int16_t) cntrl_inst.acc_num_enroll;
-                    *pt_corr = (int16_t) (corr*32768);
+                    *pt_corr = (int16_t) (corr * 32768.0f);
                     if (detected)
                     {
                         for (int i = 0; i < LEN_STFT_HOP; i++)
-                            g_in16AudioDataBuffer[LEN_STFT_HOP+i] = (int16_t) (corr * 32768);
+                            g_in16AudioDataBuffer[LEN_STFT_HOP+i] = (int16_t) (corr * 32768.0f);
                     }
                     else
                     {
@@ -259,7 +259,7 @@ int main(void) {
 #ifdef DEF_GUI_ENABLE
                     ns_rpc_data_sendBlockToPC(&pcmBlock);
                     ns_rpc_data_computeOnPC(&computeBlock, &IsRecordBlock);
-                    if (IsRecordBlock.buffer.data[0]==0)
+                    if (IsRecordBlock.buffer.data[0] == 0)
                     {
                         g_audioRecording = false;
                         g_audioReady = false;

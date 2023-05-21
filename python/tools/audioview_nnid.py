@@ -14,13 +14,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
 import scipy.io.wavfile as wavfile
-# Define the RPC service handlers - one for each EVB-to-PC RPC function
 
+# Define the RPC service handlers - one for each EVB-to-PC RPC function
 FRAMES_TO_SHOW  = 500
 SAMPLING_RATE   = 16000
 HOP_SIZE        = 160
 TEST_PHASE = 1
 ENROLL_PHASE = 0
+
 class DataServiceClass:
     """
     Capture Audio data: EVB->PC
@@ -326,7 +327,7 @@ def main(args):
     lock = Lock()
     databuf = Array('d', FRAMES_TO_SHOW * HOP_SIZE)
     record_ind = Array('i', [0]) # is_record indicator. 'No record' as initialization
-    enroll_ind = Array('i', [0,0,0]) # enroll_ind indicator. 'No record' as initialization
+    enroll_ind = Array('i', [0,0,0]) # (enroll_ind, acc_num_enroll, correlation_id)
     cyc_count = Array('i', [0])
     # we use two multiprocesses to handle real-time visualization and recording
     # 1. proc_draw   : to visualize

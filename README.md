@@ -3,7 +3,7 @@ NN Speaker ID (NNID) is a speaker identification/verification model based on rec
 ## Directory contents
 ```py
 nnid/ # root 
-    evb/ # for evb deployment
+    evb/      # for evb deployment
         build/      # bin files
         includes/   # required inlcudes
         libs/       # required libs
@@ -22,7 +22,7 @@ To work on Apollo4, you need
 - Arm GNU Toolchain 11.3
 - Segger J-Link v7.56+
 # Speaker Identification
-This speaker identification model is based on 16kHZ sampling rate. The model size is about 110kB. Also, there is one extra VAD (voice activity detection) model to extract the voice data. The extracted data is then sent to the speaker identification mode for verfication.
+This speaker identification model is based on 16kHz sampling rate. The model size is about 110kB. Also, there is one extra VAD (voice activity detection) model to extract the voice data. The extracted data is then sent to the speaker identification mode for verfication.
 
 ### `Dataset`
 The NNID model is trained based on several audio dataset, including human speech and noises. Before you use this repo, please read on their license agreements carefully in [here](./docs/README.md).
@@ -43,12 +43,12 @@ From the `nnid/evb/` directory:
    You might need to change the option `--tty` depending on your OS.
 7. On your GUI, press `record` to start recording. This will lead you to enter the `enrollment phase`. 
     * The GUI will show you have `0/4` utterances in enrollment as shown in `Fig. 1.1`. The `0/4` means there will be total 4 utterances to be record, and there is 0 utterance recorded now.
-    * You can start to say something. Try to make your uterance last around 2 seconds. If your speech is detected, the GUI will show you have `1/4` utterances in enrollment as shown in `Fig. 1.2`. This means you'd successfully enrolled the first utterances. Keep say something and repeat the process until all 4 utterances are enrolled.
+    * You can start to say something. Try to make your utterance last around 2 seconds. If your speech is detected, the GUI will show you have `1/4` utterances in enrollment as shown in `Fig. 1.2`. This means you'd successfully enrolled the first utterance. Keep say something and repeat the process until all 4 utterances are enrolled.
     * After all 4 utterances are enrolled, GUI will show you are in the `testing phase` in `Fig. 1.3`.
     * In the `testing phase`, try to say something and try to make your utterance last around 2 seconds. If your voice is verified, GUI will show `Yes, verified` in `Fig. 1.4`. Conversely, if your voice is not verified, GUI will show `No, not verified` on the top of GUI.
-    * You can repeat testing (try to say something again to see whether your voice is verified)
-     If you want to stop the program, just press the `stop` button.
-    * Check the two recording files under `nnid/evb/audio_result/`. 
+    * You can repeat testing (try to say something again to see whether your voice is verified). 
+    * If you want to stop the program, just press the `stop` button.
+      Check the two recording files under `nnid/evb/audio_result/`. 
       - `audio_raw.wav`: the raw PCM data from your mic.
       - `audio_debug.wav`: the debug infomation.
     * You can restart the program by pressing `record` button. You will enter the `enrollment phase` again. 
@@ -56,14 +56,14 @@ From the `nnid/evb/` directory:
   <img src="./pics/start.png"  width="80%">
 </p>
 <p align="center">
-  Fig. 1.1: GUI shows the enrollment phase, and `0` utterances is enrolled
+  Fig. 1.1: GUI shows the enrollment phase, and `0` utterance is enrolled
 </p>
     
 <p align="center">
   <img src="./pics/enroll_1.png"  width="80%">
 </p>
 <p align="center">
-  Fig. 1.2: GUI shows the enrollment phase, and `1` utterances is enrolled
+  Fig. 1.2: GUI shows the enrollment phase, and `1` utterance is enrolled. These are total 4 utterances to enroll.
 </p>
 
 <p align="center">

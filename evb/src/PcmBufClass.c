@@ -22,7 +22,7 @@ void PcmBufClass_reset(PcmBufClass *pt_inst) {
     int i;
     for (i = 0; i < (pt_inst->num_frs * pt_inst->smpls_fr); i++)
         pt_inst->pcm_buffer[i] = 0;
-    pt_inst->idx_set = 0;
+    pt_inst->idx_frame_set = 0;
 }
 
 void PcmBufClass_setData( 
@@ -37,12 +37,12 @@ void PcmBufClass_setData(
     */
     int i;
     int16_t *pt_dst;
-    pt_dst = pt_inst->pcm_buffer + pt_inst->idx_set * pt_inst->smpls_fr;
+    pt_dst = pt_inst->pcm_buffer + pt_inst->idx_frame_set * pt_inst->smpls_fr;
     for (i = 0; i < pt_inst->smpls_fr; i++)
     {
         *pt_dst++ = pcm_input[i];
     }
-    pt_inst->idx_set = (pt_inst->idx_set + 1) % pt_inst->num_frs;
+    pt_inst->idx_frame_set = (pt_inst->idx_frame_set + 1) % pt_inst->num_frs;
 }
 
 void PcmBufClass_getData(
@@ -65,7 +65,7 @@ void PcmBufClass_getData(
     int32_t start;
     int32_t num_fw;
     
-    start = (pt_inst->idx_set - lookbk_frs) % pt_inst->num_frs;
+    start = (pt_inst->idx_frame_set - lookbk_frs) % pt_inst->num_frs;
     start = (start >= 0 ) ? start : start + pt_inst->num_frs;
 
     num_fw = fetching_frames;

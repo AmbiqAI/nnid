@@ -26,17 +26,16 @@ void nnidCntrlClass_reset(nnidCntrlClass* pt_inst)
 void nnidCntrlClass_init(nnidCntrlClass* pt_inst)
 {
 	
-	pt_inst->pt_feat_nnid = (void*) &feat_nnid;
-	pt_inst->pt_feat_vad = (void*) &feat_vad;
-	pt_inst->pt_nnst_nnid = (void*)&nnst_nnid;
-	pt_inst->pt_nnst_vad = (void*)&nnst_vad;
-	pt_inst->pt_pcmBuf = (void*)&pcmBuf_inst;
-	pt_inst->num_enroll = 4;
-	// PCM_BUF init, reset
+	pt_inst->pt_feat_nnid 	= (void*) &feat_nnid;
+	pt_inst->pt_feat_vad 	= (void*) &feat_vad;
+	pt_inst->pt_nnst_nnid 	= (void*)&nnst_nnid;
+	pt_inst->pt_nnst_vad 	= (void*)&nnst_vad;
+	pt_inst->pt_pcmBuf 		= (void*)&pcmBuf_inst;
+	pt_inst->num_enroll 	= 4;
 
+	// PCM_BUF init, reset
 	PcmBufClass_init(&pcmBuf_inst);
 	
-
 	// nnvad init, reset
 	NNSPClass_init(
 		&nnst_vad,
@@ -48,7 +47,6 @@ void nnidCntrlClass_init(nnidCntrlClass* pt_inst)
 		&glob_th_prob,
 		&glob_count_trigger,
 		&params_nn1_nnvad);
-	
 
 	// nnid init, reset
 	NNSPClass_init(
@@ -75,7 +73,7 @@ void norm_then_ave(
 	for (int i =  0; i < num_sents; i++)
 	{
 		norm[i] = 0;
-		for (int j=0; j < len_vec; j++)
+		for (int j = 0; j < len_vec; j++)
 		{
 			acc = 3.0518e-05 * ((float) inputs[i*len_vec + j]);
 			norm[i] += acc * acc; 
@@ -103,11 +101,11 @@ int16_t nnidCntrlClass_exec(
 	int16_t detected;
 	NNID_CLASS* pt_nnid;
 	int16_t is_get_corr = 0;
-	static int32_t embds[4 * 64];
+	static int32_t embds_enroll[4 * 64];
 	pt_nnid = (NNID_CLASS*) nnst_nnid.pt_state_nnid;
 
 	*pt_corr = pt_nnid->corr;
-	
+
 	PcmBufClass_setData(&pcmBuf_inst, rawPCM);
 	detected = NNSPClass_exec(&nnst_vad, rawPCM);
 	pt_inst->count_vad_trigger = (detected) ? pt_inst->count_vad_trigger + 1 : 0;
@@ -118,31 +116,31 @@ int16_t nnidCntrlClass_exec(
 		for (int f = 0; f < pt_nnid->thresh_get_corr; f++)
 		{
 			PcmBufClass_getData(
-				&pcmBuf_inst,
-				pt_nnid->thresh_get_corr - f, // the lookback frame
-				1, // frames to read
-				rawPCM);
+				&pcmBuf_inst,					// inputs
+				pt_nnid->thresh_get_corr - f, 	// the lookback frame
+				1, 								// frames to read
+				rawPCM);						// outputs
 			if (f == pt_nnid->thresh_get_corr - 1)
 				pt_nnid->is_get_corr = 1;
 			else
 				pt_nnid->is_get_corr = 0;
 			NNSPClass_exec(&nnst_nnid, rawPCM);
 		}
+
 		if (pt_inst->enroll_state == enroll_phase)
 		{
 			NNSPClass_get_nn_out(
-				embds + pt_inst->acc_num_enroll * pt_nnid->dim_embd,
+				embds_enroll + pt_inst->acc_num_enroll * pt_nnid->dim_embd,
 				pt_nnid->dim_embd);
-			pt_inst->acc_num_enroll+=1;
+			pt_inst->acc_num_enroll += 1;
 			if (pt_inst->acc_num_enroll == pt_inst->num_enroll)
 			{
 				norm_then_ave(
 					pt_nnid->pt_embd,
-					embds,
+					embds_enroll,
 					pt_inst->num_enroll,
 					pt_nnid->dim_embd);
 				pt_inst->enroll_state = test_phase;
-
 			}
 			pt_nnid->corr = -0.5;
 		}
