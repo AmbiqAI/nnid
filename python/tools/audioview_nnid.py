@@ -194,7 +194,7 @@ class VisualDataClass:
         self.fig.canvas.mpl_connect('close_event', self.handle_close)
         plt.subplots_adjust(bottom=0.35)
         self.title_handle = plt.title("Click 'record' button to start the enrollment")
-
+        self.text_thres = plt.text(0, -2.5, f"Threshold={self.thres_nnid}")
         self.lock.acquire()
         np_databuf = databuf[0:]
         self.lock.release()
@@ -286,11 +286,11 @@ class VisualDataClass:
                 elif enroll_state==TEST_PHASE:
                     corr_f = float(corr) / 32768
                     if corr_f > self.thres_nnid:
-                        self.title_handle.set_text(f"Tesing phase: Yes, verified.\ncorr = {corr_f:.2f}, th = {self.thres_nnid:.2f}") # pylint: disable=line-too-long
+                        self.title_handle.set_text(f"Tesing phase: Yes, verified.\ncorr = {corr_f:.2f}") # pylint: disable=line-too-long
                     elif corr_f < 0:
                         self.title_handle.set_text("Tesing phase: entered test phase. Please say something") # pylint: disable=line-too-long
                     else:
-                        self.title_handle.set_text(f"Tesing phase: No, not verified.\ncorr = {corr_f:.2f}, th = {self.thres_nnid:.2f}") # pylint: disable=line-too-long
+                        self.title_handle.set_text(f"Tesing phase: No, not verified.\ncorr = {corr_f:.2f}") # pylint: disable=line-too-long
                 plt.pause(0.05)
                 self.lock.acquire()
                 is_record = self.is_record[0]

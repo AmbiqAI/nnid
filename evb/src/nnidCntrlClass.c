@@ -28,9 +28,9 @@ void nnidCntrlClass_init(nnidCntrlClass* pt_inst)
 	
 	pt_inst->pt_feat_nnid 	= (void*) &feat_nnid;
 	pt_inst->pt_feat_vad 	= (void*) &feat_vad;
-	pt_inst->pt_nnst_nnid 	= (void*)&nnst_nnid;
-	pt_inst->pt_nnst_vad 	= (void*)&nnst_vad;
-	pt_inst->pt_pcmBuf 		= (void*)&pcmBuf_inst;
+	pt_inst->pt_nnst_nnid 	= (void*) &nnst_nnid;
+	pt_inst->pt_nnst_vad 	= (void*) &nnst_vad;
+	pt_inst->pt_pcmBuf 		= (void*) &pcmBuf_inst;
 	pt_inst->num_enroll 	= 4;
 
 	// PCM_BUF init, reset

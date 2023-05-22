@@ -41,6 +41,12 @@ bool volatile static g_audioReady = false;
 int16_t static g_in16AudioDataBuffer[(LEN_STFT_HOP << 1) + 10];
 uint32_t static audadcSampleBuffer[(LEN_STFT_HOP << 1) + 3];
 
+typedef enum
+{
+	button_stop     = 0,
+	button_start	= 1,
+}button_state_T;
+
 #ifdef DEF_GUI_ENABLE 
 static char msg_store[30] = "Audio16bPCM_to_WAV";
 
@@ -158,12 +164,13 @@ const ns_power_config_t ns_lp_audio = {
 int main(void) {
     nnidCntrlClass cntrl_inst;
     float corr;
+    int16_t corr_int;
     int16_t detected;
-    int16_t *pt_enroll = g_in16AudioDataBuffer + (LEN_STFT_HOP <<1);
+    int16_t *pt_debug;
+    int16_t *pt_enroll = g_in16AudioDataBuffer + (LEN_STFT_HOP << 1);
     int16_t *pt_acc_num_enroll = pt_enroll + 1;
     int16_t *pt_corr = pt_acc_num_enroll + 1;
     g_audioRecording = false;
-
     ns_core_init();
     // ns_power_config(&ns_lp_audio);
     ns_power_config(&ns_audio_default);
@@ -212,11 +219,14 @@ int main(void) {
         g_intButtonPressed = 0;
         ns_deep_sleep();
 #ifdef DEF_GUI_ENABLE
+        // This infinite loop is checking whether the start button in PC side is pressed. 
         while (1)
         {
-            ns_rpc_data_computeOnPC(&computeBlock, &IsRecordBlock);
-            if (IsRecordBlock.buffer.data[0]==1)
+            // EVB received IsRecordBlock sent form PC
+            ns_rpc_data_computeOnPC(&computeBlock, &IsRecordBlock); 
+            if (IsRecordBlock.buffer.data[0]==button_start)
             {
+                // if button pressed, break the loop
                 g_intButtonPressed = 1;
                 ns_rpc_data_clientDoneWithBlockFromPC(&IsRecordBlock);
                 nnidCntrlClass_reset(&cntrl_inst);
@@ -243,23 +253,20 @@ int main(void) {
                         &cntrl_inst,
                         g_in16AudioDataBuffer,
                         &corr);
+                    
+                    // prepare information and send to PC side
                     *pt_enroll = (int16_t) cntrl_inst.enroll_state;
                     *pt_acc_num_enroll = (int16_t) cntrl_inst.acc_num_enroll;
                     *pt_corr = (int16_t) (corr * 32768.0f);
-                    if (detected)
-                    {
-                        for (int i = 0; i < LEN_STFT_HOP; i++)
-                            g_in16AudioDataBuffer[LEN_STFT_HOP+i] = (int16_t) (corr * 32768.0f);
-                    }
-                    else
-                    {
-                        for (int i = 0; i < LEN_STFT_HOP; i++)
-                            g_in16AudioDataBuffer[LEN_STFT_HOP+i] = 0;
-                    }
+                    corr_int = (detected) ? (int16_t) (corr * 32768.0f) : 0; 
+                    pt_debug = g_in16AudioDataBuffer + LEN_STFT_HOP;
+                    for (int i = 0; i < LEN_STFT_HOP; i++)
+                            *pt_debug++ = corr_int;
 #ifdef DEF_GUI_ENABLE
-                    ns_rpc_data_sendBlockToPC(&pcmBlock);
-                    ns_rpc_data_computeOnPC(&computeBlock, &IsRecordBlock);
-                    if (IsRecordBlock.buffer.data[0] == 0)
+                    ns_rpc_data_sendBlockToPC(&pcmBlock); // send data to PC sice
+                    ns_rpc_data_computeOnPC(&computeBlock, &IsRecordBlock); // receive data from PC side
+                    // check if PC side asks for stopping the program
+                    if (IsRecordBlock.buffer.data[0] == button_stop)
                     {
                         g_audioRecording = false;
                         g_audioReady = false;
