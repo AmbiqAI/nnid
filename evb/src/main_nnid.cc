@@ -164,7 +164,6 @@ const ns_power_config_t ns_lp_audio = {
 int main(void) {
     nnidCntrlClass cntrl_inst;
     float corr_array[5];
-    int16_t corr_int;
     int16_t detected;
     int16_t *pt_debug;
     int16_t *pt_acc_num_enroll = g_in16AudioDataBuffer + (LEN_STFT_HOP << 1);
@@ -262,7 +261,6 @@ int main(void) {
                     // prepare information and send to PC side
                     *pt_acc_num_enroll = (int16_t) cntrl_inst.acc_num_enroll;
                     *pt_is_result = 0;
-                    corr_int = 0;
                     if (cntrl_inst.enroll_state == test_phase)
                     {
                         if (detected)
@@ -270,13 +268,12 @@ int main(void) {
                             *pt_is_result = 1;
                             for (int i=0; i < cntrl_inst.total_enroll_ppls; i++)
                                 pt_corr[i] = (int16_t) (corr_array[i] * 32768.0f);
-                            corr_int = 0x7fff >> 1;
                         }
                     }
                     
                     pt_debug = g_in16AudioDataBuffer + LEN_STFT_HOP;
                     for (int i = 0; i < LEN_STFT_HOP; i++)
-                        *pt_debug++ = corr_int;
+                        *pt_debug++ = detected;
 #ifdef DEF_GUI_ENABLE
                     ns_rpc_data_sendBlockToPC(&pcmBlock); // send data to PC sice
                     ns_rpc_data_computeOnPC(&computeBlock, &IsRecordBlock); // receive data from PC side

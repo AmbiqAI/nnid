@@ -30,6 +30,15 @@ PC_INFO_ID={
     "enroll_success":4,
     "update_result" :5}
 
+EVB_INFO_ID={
+    "acc_num_enroll":0,
+    "is_result"     :1,
+    "corr0"         :2,
+    "corr1"         :3,
+    "corr2"         :4,
+    "corr3"         :5,
+    "corr4"         :6}
+
 class DataServiceClass:
     """
     Capture Audio data: EVB->PC
@@ -60,7 +69,7 @@ class DataServiceClass:
         callback function that data sent from EVB to PC.
         """
         self.lock.acquire()
-        is_record = self.pc_info[0]
+        is_record = self.pc_info[PC_INFO_ID["is_record"]]
         self.lock.release()
         if is_record == 0:
             if self.wavefile:
@@ -115,7 +124,7 @@ class DataServiceClass:
                 self.evb_info[0] = acc_num_enroll
                 if is_result==1:
                     self.pc_info[PC_INFO_ID["update_result"]] = 1
-                    self.evb_info[1] = is_result
+                    self.evb_info[EVB_INFO_ID["is_result"]] = is_result
                 enroll_state = self.pc_info[PC_INFO_ID["enroll_state"]]
                 if is_result == 1:
                     total_ppls  = self.pc_info[PC_INFO_ID["total_ppls"]]
@@ -173,10 +182,10 @@ class DataServiceClass:
         if (in_block.cmd == GenericDataOperations_EvbToPc.common.command.extract_cmd) and (
             in_block.description == "CalculateMFCC_Please"):
             self.lock.acquire()
-            a0 = self.pc_info[0]
-            a1 = self.pc_info[1]
-            a2 = self.pc_info[2]
-            a3 = self.pc_info[3]
+            a0 = self.pc_info[PC_INFO_ID["is_record"]]
+            a1 = self.pc_info[PC_INFO_ID["id_enroll_ppl"]]
+            a2 = self.pc_info[PC_INFO_ID["total_ppls"]]
+            a3 = self.pc_info[PC_INFO_ID["enroll_state"]]
             self.lock.release()
             data2pc = [a0, a1, a2, a3]
             IsRecordBlock.value = GenericDataOperations_EvbToPc.common.dataBlock(
@@ -204,7 +213,7 @@ class VisualDataClass:
             thres_nnid = 0.8):
         self.enroll_names={}
         self.total_ppls = 0
-        
+
         self.databuf = databuf
         self.lock    = lock
         self.pc_info = pc_info
@@ -217,10 +226,10 @@ class VisualDataClass:
         self.fig, self.ax_handle = plt.subplots()
         self.fig.canvas.mpl_connect('close_event', self.handle_close)
         plt.subplots_adjust(bottom=0.35)
-        self.title_handle = plt.title("Click 'record' button to start the enrollment")
+        self.title_handle = plt.title("Click 'enroll' button to start the enrollment")
         self.text_thres = plt.text(0, -2.5, f"Threshold={self.thres_nnid}")
         self.text_enroll_info = plt.text(4, -2, "No enrollment info")
-        
+        self.name_current_enroll = ""
         self.lock.acquire()
         np_databuf = databuf[0:]
         self.lock.release()
@@ -263,81 +272,74 @@ class VisualDataClass:
                             [0.5, 0.05, 0.14, 0.075],
                             'test',
                             self.callback_test)
-        
+
         axbox = plt.axes([0.35, 0.15, 0.14, 0.075])
-        self.enroll_box = TextBox(axbox, 'Input your Name to enroll \n and hit the enter ', initial="")
-        
+        self.enroll_box = TextBox(
+                    axbox,
+                    'Input your Name->',
+                    initial="")
         plt.show()
-    
-    # def callback_enroll(self, event):
-    #     """
-    #     for enroll button
-    #     """
-    #     print(self.enroll_box.text)
-    #     if event.inaxes is not None:
-    #         event.inaxes.figure.canvas.draw_idle()
 
     def callback_enroll(self, event):
         """
         for enroll text box
         """
         if self.enroll_box.text == "":
-            print("Input your name")
-            return 0
+            self.title_handle.set_text("Input your name to enroll")
         else:
             text = self.enroll_box.text
-        self.lock.acquire()
-        is_record = self.pc_info[0]
-        self.lock.release()
-        if is_record == 0:
-            if text in self.enroll_names:
-                print(f"Name {text} enrolled as id = {self.enroll_names[text]}")
-            else:
-                self.enroll_names[text] = self.total_ppls
-                print(f"Name {text} enrolled as id = {self.total_ppls}")
-                self.total_ppls += 1
-            self.name_current_enroll = text
-            if self.total_ppls > MAX_NUM_PPLS_ENROLL:
-                print(f"Max number of ppl to enroll is {MAX_NUM_PPLS_ENROLL}")
-            else:
-                self.lock.acquire()
-                self.pc_info[PC_INFO_ID["is_record"]]       = 1
-                self.pc_info[PC_INFO_ID["id_enroll_ppl"]]   = self.enroll_names[self.name_current_enroll] # pylint: disable=line-too-long
-                self.pc_info[PC_INFO_ID["total_ppls"]]      = self.total_ppls
-                self.pc_info[PC_INFO_ID["enroll_state"]]    = ENROLL_PHASE
-                self.pc_info[PC_INFO_ID["enroll_success"]]  = 0
-                self.lock.release()
-                while 1:
+            self.lock.acquire()
+            is_record = self.pc_info[PC_INFO_ID["is_record"]]
+            self.lock.release()
+            if is_record == 0:
+                if text in self.enroll_names:
+                    print(f"Name {text} enrolled as id = {self.enroll_names[text]}")
+                else:
+                    self.enroll_names[text] = self.total_ppls
+                    print(f"Name {text} enrolled as id = {self.total_ppls}")
+                    self.total_ppls += 1
+                self.name_current_enroll = text
+                if self.total_ppls > MAX_NUM_PPLS_ENROLL:
+                    print(f"Max number of ppl to enroll is {MAX_NUM_PPLS_ENROLL}")
+                else:
                     self.lock.acquire()
-                    cyc_count = self.cyc_count[0]
-                    np_databuf = self.databuf[0:]
-                    acc_num_enroll = self.evb_info[0]
+                    self.pc_info[PC_INFO_ID["is_record"]]       = 1
+                    self.pc_info[PC_INFO_ID["id_enroll_ppl"]]   = self.enroll_names[self.name_current_enroll] # pylint: disable=line-too-long
+                    self.pc_info[PC_INFO_ID["total_ppls"]]      = self.total_ppls
+                    self.pc_info[PC_INFO_ID["enroll_state"]]    = ENROLL_PHASE
+                    self.pc_info[PC_INFO_ID["enroll_success"]]  = 0
                     self.lock.release()
+                    while 1:
+                        self.lock.acquire()
+                        cyc_count = self.cyc_count[0]
+                        np_databuf = self.databuf[0:]
+                        acc_num_enroll = self.evb_info[EVB_INFO_ID["acc_num_enroll"]]
+                        self.lock.release()
 
-                    zeros_tail = [0.0] * (HOP_SIZE * (FRAMES_TO_SHOW - cyc_count))
-                    np_databuf = np_databuf[:HOP_SIZE*cyc_count] + zeros_tail
-                    self.line_data.set_data(self.xdata, np_databuf)
+                        zeros_tail = [0.0] * (HOP_SIZE * (FRAMES_TO_SHOW - cyc_count))
+                        np_databuf = np_databuf[:HOP_SIZE*cyc_count] + zeros_tail
+                        self.line_data.set_data(self.xdata, np_databuf)
 
-                    self.title_handle.set_text(f"{self.name_current_enroll}: you have {acc_num_enroll} / 4 utterances in enrollment. \nPlease say something") # pylint: disable=line-too-long
+                        self.title_handle.set_text(f"{self.name_current_enroll}: you have {acc_num_enroll} / 4 utterances in enrollment. \nPlease say something") # pylint: disable=line-too-long
 
-                    self.lock.acquire()
-                    enroll_success = self.pc_info[PC_INFO_ID["enroll_success"]]
-                    is_record = self.pc_info[PC_INFO_ID["is_record"]]
-                    self.lock.release()
+                        self.lock.acquire()
+                        enroll_success = self.pc_info[PC_INFO_ID["enroll_success"]]
+                        is_record = self.pc_info[PC_INFO_ID["is_record"]]
+                        self.lock.release()
 
-                    if is_record==0:
-                        if enroll_success == 1:
-                            self.title_handle.set_text(f"{self.name_current_enroll}'s enrollment success")  # pylint: disable=line-too-long
-                            info = "Enrollment info:\n"
-                            for key, val in self.enroll_names.items():
-                                info+=f"{val} : {key}\n"
-                            self.text_enroll_info.set_text(info)
-                        else:
-                            self.title_handle.set_text(f"{self.name_current_enroll}'s enrollment failed")   # pylint: disable=line-too-long
+                        if is_record==0:
+                            if enroll_success == 1:
+                                self.title_handle.set_text(f"{self.name_current_enroll}'s enrollment succeeded")  # pylint: disable=line-too-long
+                                info = "Enrollment info:\n"
+                                for key, val in self.enroll_names.items():
+                                    info+=f"{val} : {key}\n"
+                                self.text_enroll_info.set_text(info)
+                            else:
+                                self.title_handle.set_text(f"{self.name_current_enroll}'s enrollment failed")   # pylint: disable=line-too-long
 
-                    plt.pause(0.05)
-                    if is_record == 0:
-                        break
+                        plt.pause(0.05)
+                        if is_record == 0:
+                            break
         if event.inaxes is not None:
             event.inaxes.figure.canvas.draw_idle()
 
@@ -346,7 +348,7 @@ class VisualDataClass:
         Finish everything when you close your plot
         """
         self.lock.acquire()
-        self.pc_info[0] = 0
+        self.pc_info[PC_INFO_ID["is_record"]] = 0
         self.lock.release()
         print('Window close')
         time.sleep(0.05)
@@ -375,8 +377,8 @@ class VisualDataClass:
                     self.pc_info[PC_INFO_ID["total_ppls"]] = self.total_ppls
                     self.lock.release()
                 else:
-                    self.title_handle.set_text("Click 'record' button to start the enrollment")
-        else:
+                    self.title_handle.set_text("Click 'enroll' button to start the enrollment")
+        else: # TEST_PHASE
             if is_record==1:
                 self.lock.acquire()
                 self.pc_info[PC_INFO_ID["is_record"]] = 0
@@ -406,8 +408,6 @@ class VisualDataClass:
                 self.lock.acquire()
                 cyc_count = self.cyc_count[0]
                 np_databuf = self.databuf[0:]
-                for i in range(len(self.enroll_names)):
-                    corr[i] = self.evb_info[i+1]
                 self.lock.release()
 
                 zeros_tail = [0.0] * (HOP_SIZE * (FRAMES_TO_SHOW - cyc_count))
@@ -428,13 +428,18 @@ class VisualDataClass:
                         self.title_handle.set_text(f"{enroll_id2name[id_max_corr]} is verified: corr = {max_corr:.2f}") # pylint: disable=line-too-long
                     else:
                         self.title_handle.set_text(f"Unknown: corr = {max_corr:.2f}")
+                    info = "Testing info:\n"
+                    for i, (key, val) in enumerate(self.enroll_names.items()):
+                        corr_i = float(corr[i]/32768.0)
+                        info+=f"{val} : {key}--corr={corr_i:.2f}\n"
+                    self.text_enroll_info.set_text(info)
                 self.lock.acquire()
                 self.pc_info[PC_INFO_ID["update_result"]] = 0
                 self.lock.release()
 
                 plt.pause(0.05)
                 self.lock.acquire()
-                is_record = self.pc_info[0]
+                is_record = self.pc_info[PC_INFO_ID["is_record"]]
                 self.lock.release()
                 if is_record == 0:
                     break

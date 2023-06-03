@@ -161,10 +161,11 @@ int16_t nnidCntrlClass_exec(
 			}
 			for (int i =0; i < pt_inst->total_enroll_ppls; i++)
 				pt_nnid->corr[i] = -0.5;
+			is_detected = -(0x7fff >> 1);
 		}
 		else
 		{
-			is_detected = 1;
+			is_detected = 0x7fff >> 1;
 			for (int i =0; i < pt_inst->total_enroll_ppls; i++)
 				pt_corr[i] = pt_nnid->corr[i];
 		}
