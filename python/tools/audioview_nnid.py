@@ -12,28 +12,36 @@ import erpc
 import GenericDataOperations_EvbToPc
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.widgets import Button
+from matplotlib.widgets import Button, TextBox
 import scipy.io.wavfile as wavfile
 
 # Define the RPC service handlers - one for each EVB-to-PC RPC function
 FRAMES_TO_SHOW  = 500
 SAMPLING_RATE   = 16000
 HOP_SIZE        = 160
-TEST_PHASE = 1
-ENROLL_PHASE = 0
+TEST_PHASE      = 1
+ENROLL_PHASE    = 0
+MAX_NUM_PPLS_ENROLL = 5
+PC_INFO_ID={
+    "is_record"     :0,
+    "id_enroll_ppl" :1,
+    "total_ppls"    :2,
+    "enroll_state"  :3,
+    "enroll_success":4,
+    "update_result" :5}
 
 class DataServiceClass:
     """
     Capture Audio data: EVB->PC
     """
-    def __init__(self, databuf, wavout, lock, is_record, cyc_count, enroll_ind):
+    def __init__(self, databuf, wavout, lock, pc_info, cyc_count, evb_info):
         self.cyc_count      = cyc_count
         self.wavefile       = None
         self.wavename       = wavout
         self.databuf        = databuf
         self.lock           = lock
-        self.is_record      = is_record
-        self.enroll_ind     = enroll_ind
+        self.pc_info      = pc_info
+        self.evb_info     = evb_info
 
     def wavefile_init(self, wavename):
         """
@@ -52,7 +60,7 @@ class DataServiceClass:
         callback function that data sent from EVB to PC.
         """
         self.lock.acquire()
-        is_record = self.is_record[0]
+        is_record = self.pc_info[0]
         self.lock.release()
         if is_record == 0:
             if self.wavefile:
@@ -101,14 +109,26 @@ class DataServiceClass:
                 data = np.frombuffer(pcmBlock.buffer, dtype=np.int16).copy()
                 self.lock.release()
 
-                enroll_state = data[HOP_SIZE*2]
-                acc_num_enroll = data[HOP_SIZE*2+1]
-                corr = data[HOP_SIZE*2+2]
+                acc_num_enroll = data[HOP_SIZE*2]
+                is_result = data[HOP_SIZE*2+1]
                 self.lock.acquire()
-                self.enroll_ind[0] = enroll_state
-                self.enroll_ind[1] = acc_num_enroll
-                self.enroll_ind[2] = corr
+                self.evb_info[0] = acc_num_enroll
+                if is_result==1:
+                    self.pc_info[PC_INFO_ID["update_result"]] = 1
+                    self.evb_info[1] = is_result
+                enroll_state = self.pc_info[PC_INFO_ID["enroll_state"]]
+                if is_result == 1:
+                    total_ppls  = self.pc_info[PC_INFO_ID["total_ppls"]]
+                    for i in range(total_ppls):
+                        self.evb_info[i+2] = data[HOP_SIZE*2+2+i]
                 self.lock.release()
+                
+                if enroll_state == ENROLL_PHASE:
+                    if acc_num_enroll==4:
+                        self.lock.acquire()
+                        self.pc_info[PC_INFO_ID["enroll_success"]]  = 1
+                        self.pc_info[PC_INFO_ID["is_record"]] = 0
+                        self.lock.release()
 
                 data = data[:HOP_SIZE*2]
                 data = data.reshape((2, HOP_SIZE)).T.flatten()
@@ -150,13 +170,15 @@ class DataServiceClass:
         callback function that sending result_block to EVB
             that indicating to record or stop
         """
-        self.lock.acquire()
-        is_record = self.is_record[0]
-        self.lock.release()
         if (in_block.cmd == GenericDataOperations_EvbToPc.common.command.extract_cmd) and (
             in_block.description == "CalculateMFCC_Please"):
-
-            data2pc = [is_record]
+            self.lock.acquire()
+            a0 = self.pc_info[0]
+            a1 = self.pc_info[1]
+            a2 = self.pc_info[2]
+            a3 = self.pc_info[3]
+            self.lock.release()
+            data2pc = [a0, a1, a2, a3]
             IsRecordBlock.value = GenericDataOperations_EvbToPc.common.dataBlock(
                 description ="*\0",
                 dType       = GenericDataOperations_EvbToPc.common.dataType.uint8_e,
@@ -175,18 +197,20 @@ class VisualDataClass:
             self,
             databuf,
             lock,
-            is_record,
+            pc_info,
             event_stop,
             cyc_count,
-            enroll_ind,
+            evb_info,
             thres_nnid = 0.8):
-
+        self.enroll_names={}
+        self.total_ppls = 0
+        
         self.databuf = databuf
         self.lock    = lock
-        self.is_record = is_record
+        self.pc_info = pc_info
         self.event_stop = event_stop
         self.cyc_count = cyc_count
-        self.enroll_ind = enroll_ind
+        self.evb_info = evb_info
         self.thres_nnid = thres_nnid
         secs2show = FRAMES_TO_SHOW * HOP_SIZE/SAMPLING_RATE
         self.xdata = np.arange(FRAMES_TO_SHOW * HOP_SIZE) / SAMPLING_RATE
@@ -195,6 +219,8 @@ class VisualDataClass:
         plt.subplots_adjust(bottom=0.35)
         self.title_handle = plt.title("Click 'record' button to start the enrollment")
         self.text_thres = plt.text(0, -2.5, f"Threshold={self.thres_nnid}")
+        self.text_enroll_info = plt.text(4, -2, "No enrollment info")
+        
         self.lock.acquire()
         np_databuf = databuf[0:]
         self.lock.release()
@@ -225,22 +251,102 @@ class VisualDataClass:
             button.on_clicked(callback_func)
             return button
         self.wavfile = None
-        self.button_replay = make_button(
-                            [0.35, 0.15, 0.14, 0.075],
+        self.button_stop = make_button(
+                            [0.35, 0.05, 0.14, 0.075],
                             'stop',
                             self.callback_recordstop)
-        self.button_record = make_button(
+        self.button_enroll = make_button(
                             [0.5, 0.15, 0.14, 0.075],
-                            'record',
-                            self.callback_recordstart)
+                            'enroll',
+                            self.callback_enroll)
+        self.button_test = make_button(
+                            [0.5, 0.05, 0.14, 0.075],
+                            'test',
+                            self.callback_test)
+        
+        axbox = plt.axes([0.35, 0.15, 0.14, 0.075])
+        self.enroll_box = TextBox(axbox, 'Input your Name to enroll \n and hit the enter ', initial="")
+        
         plt.show()
+    
+    # def callback_enroll(self, event):
+    #     """
+    #     for enroll button
+    #     """
+    #     print(self.enroll_box.text)
+    #     if event.inaxes is not None:
+    #         event.inaxes.figure.canvas.draw_idle()
+
+    def callback_enroll(self, event):
+        """
+        for enroll text box
+        """
+        if self.enroll_box.text == "":
+            print("Input your name")
+            return 0
+        else:
+            text = self.enroll_box.text
+        self.lock.acquire()
+        is_record = self.pc_info[0]
+        self.lock.release()
+        if is_record == 0:
+            if text in self.enroll_names:
+                print(f"Name {text} enrolled as id = {self.enroll_names[text]}")
+            else:
+                self.enroll_names[text] = self.total_ppls
+                print(f"Name {text} enrolled as id = {self.total_ppls}")
+                self.total_ppls += 1
+            self.name_current_enroll = text
+            if self.total_ppls > MAX_NUM_PPLS_ENROLL:
+                print(f"Max number of ppl to enroll is {MAX_NUM_PPLS_ENROLL}")
+            else:
+                self.lock.acquire()
+                self.pc_info[PC_INFO_ID["is_record"]]       = 1
+                self.pc_info[PC_INFO_ID["id_enroll_ppl"]]   = self.enroll_names[self.name_current_enroll] # pylint: disable=line-too-long
+                self.pc_info[PC_INFO_ID["total_ppls"]]      = self.total_ppls
+                self.pc_info[PC_INFO_ID["enroll_state"]]    = ENROLL_PHASE
+                self.pc_info[PC_INFO_ID["enroll_success"]]  = 0
+                self.lock.release()
+                while 1:
+                    self.lock.acquire()
+                    cyc_count = self.cyc_count[0]
+                    np_databuf = self.databuf[0:]
+                    acc_num_enroll = self.evb_info[0]
+                    self.lock.release()
+
+                    zeros_tail = [0.0] * (HOP_SIZE * (FRAMES_TO_SHOW - cyc_count))
+                    np_databuf = np_databuf[:HOP_SIZE*cyc_count] + zeros_tail
+                    self.line_data.set_data(self.xdata, np_databuf)
+
+                    self.title_handle.set_text(f"{self.name_current_enroll}: you have {acc_num_enroll} / 4 utterances in enrollment. \nPlease say something") # pylint: disable=line-too-long
+
+                    self.lock.acquire()
+                    enroll_success = self.pc_info[PC_INFO_ID["enroll_success"]]
+                    is_record = self.pc_info[PC_INFO_ID["is_record"]]
+                    self.lock.release()
+
+                    if is_record==0:
+                        if enroll_success == 1:
+                            self.title_handle.set_text(f"{self.name_current_enroll}'s enrollment success")  # pylint: disable=line-too-long
+                            info = "Enrollment info:\n"
+                            for key, val in self.enroll_names.items():
+                                info+=f"{val} : {key}\n"
+                            self.text_enroll_info.set_text(info)
+                        else:
+                            self.title_handle.set_text(f"{self.name_current_enroll}'s enrollment failed")   # pylint: disable=line-too-long
+
+                    plt.pause(0.05)
+                    if is_record == 0:
+                        break
+        if event.inaxes is not None:
+            event.inaxes.figure.canvas.draw_idle()
 
     def handle_close(self, event): # pylint: disable=unused-argument
         """
         Finish everything when you close your plot
         """
         self.lock.acquire()
-        self.is_record[0] = 0
+        self.pc_info[0] = 0
         self.lock.release()
         print('Window close')
         time.sleep(0.05)
@@ -251,49 +357,84 @@ class VisualDataClass:
         for stop button
         """
         self.lock.acquire()
-        self.is_record[0] = 0
+        is_record = self.pc_info[PC_INFO_ID["is_record"]]
+        enroll_state = self.pc_info[PC_INFO_ID["enroll_state"]]
+        enroll_success = self.pc_info[PC_INFO_ID["enroll_success"]]
         self.lock.release()
-        self.title_handle.set_text("Click 'record' button to start the enrollment")
+        print(f"enroll_success = {enroll_success}")
+        if enroll_state == ENROLL_PHASE:
+            if is_record == 1:
+                self.lock.acquire()
+                self.pc_info[PC_INFO_ID["is_record"]] = 0
+                enroll_success = self.pc_info[PC_INFO_ID["enroll_success"]]
+                self.lock.release()
+                if enroll_success == 0:
+                    del self.enroll_names[self.name_current_enroll]
+                    self.total_ppls -= 1
+                    self.lock.acquire()
+                    self.pc_info[PC_INFO_ID["total_ppls"]] = self.total_ppls
+                    self.lock.release()
+                else:
+                    self.title_handle.set_text("Click 'record' button to start the enrollment")
+        else:
+            if is_record==1:
+                self.lock.acquire()
+                self.pc_info[PC_INFO_ID["is_record"]] = 0
+                self.lock.release()
+
         if event.inaxes is not None:
             event.inaxes.figure.canvas.draw_idle()
 
-    def callback_recordstart(self, event):
+    def callback_test(self, event):
         """
         for record button
         """
+        if len(self.enroll_names) == 0:
+            print("No enrollment info")
+            return 0
         self.lock.acquire()
-        is_record = self.is_record[0]
+        is_record = self.pc_info[PC_INFO_ID["is_record"]]
         self.lock.release()
         if is_record == 0:
             self.lock.acquire()
-            self.is_record[0] = 1
+            self.pc_info[PC_INFO_ID["is_record"]]       = 1
+            self.pc_info[PC_INFO_ID["enroll_state"]]    = TEST_PHASE
             self.lock.release()
+            corr = np.zeros((MAX_NUM_PPLS_ENROLL,), dtype=np.int32)
+            enroll_id2name = dict((v,k) for k,v in self.enroll_names.items())
             while 1:
                 self.lock.acquire()
                 cyc_count = self.cyc_count[0]
                 np_databuf = self.databuf[0:]
-                enroll_state = self.enroll_ind[0]
-                acc_num_enroll = self.enroll_ind[1]
-                corr = self.enroll_ind[2]
+                for i in range(len(self.enroll_names)):
+                    corr[i] = self.evb_info[i+1]
                 self.lock.release()
 
                 zeros_tail = [0.0] * (HOP_SIZE * (FRAMES_TO_SHOW - cyc_count))
                 np_databuf = np_databuf[:HOP_SIZE*cyc_count] + zeros_tail
                 self.line_data.set_data(self.xdata, np_databuf)
 
-                if enroll_state==ENROLL_PHASE:
-                    self.title_handle.set_text(f"Enroll phase: you have {acc_num_enroll} / 4 utterances in enrollment. \nPlease say something") # pylint: disable=line-too-long
-                elif enroll_state==TEST_PHASE:
-                    corr_f = float(corr) / 32768
-                    if corr_f > self.thres_nnid:
-                        self.title_handle.set_text(f"Tesing phase: Yes, verified.\ncorr = {corr_f:.2f}") # pylint: disable=line-too-long
-                    elif corr_f < 0:
-                        self.title_handle.set_text("Tesing phase: entered test phase. Please say something") # pylint: disable=line-too-long
+                self.lock.acquire()
+                update_result = self.pc_info[PC_INFO_ID["update_result"]]
+                if update_result == 1:
+                    total_ppls  = self.pc_info[PC_INFO_ID["total_ppls"]]
+                    for i in range(total_ppls):
+                        corr[i] = self.evb_info[i+2]
+                self.lock.release()
+                if update_result == 1:
+                    id_max_corr = np.argmax(corr)
+                    max_corr = float(corr[id_max_corr]) / 32768.0
+                    if max_corr > self.thres_nnid:
+                        self.title_handle.set_text(f"{enroll_id2name[id_max_corr]} is verified: corr = {max_corr:.2f}") # pylint: disable=line-too-long
                     else:
-                        self.title_handle.set_text(f"Tesing phase: No, not verified.\ncorr = {corr_f:.2f}") # pylint: disable=line-too-long
+                        self.title_handle.set_text(f"Unknown: corr = {max_corr:.2f}")
+                self.lock.acquire()
+                self.pc_info[PC_INFO_ID["update_result"]] = 0
+                self.lock.release()
+
                 plt.pause(0.05)
                 self.lock.acquire()
-                is_record = self.is_record[0]
+                is_record = self.pc_info[0]
                 self.lock.release()
                 if is_record == 0:
                     break
@@ -326,8 +467,16 @@ def main(args):
     event_stop = multiprocessing.Event()
     lock = Lock()
     databuf = Array('d', FRAMES_TO_SHOW * HOP_SIZE)
-    record_ind = Array('i', [0]) # is_record indicator. 'No record' as initialization
-    enroll_ind = Array('i', [0,0,0]) # (enroll_ind, acc_num_enroll, correlation_id)
+    """
+    pc_info:
+        0 : is_record indicator
+        1 : id of ppl to enroll
+        2 : total ppl enrolled
+        3 : enroll_state
+        4 : enroll_success
+    """
+    pc_info = Array('i', [0,0,0,0,0,0])
+    evb_info = Array('i', [0,0,0,0,0,0,0]) # (acc_num_enroll, is_result, correlation_id[5])
     cyc_count = Array('i', [0])
     # we use two multiprocesses to handle real-time visualization and recording
     # 1. proc_draw   : to visualize
@@ -336,10 +485,10 @@ def main(args):
                     target = target_proc_draw,
                     args   = (databuf,
                               lock,
-                              record_ind,
+                              pc_info,
                               event_stop,
                               cyc_count,
-                              enroll_ind,
+                              evb_info,
                               args.thres_nnid))
     proc_evb2pc = Process(
                     target = target_proc_evb2pc,
@@ -348,9 +497,9 @@ def main(args):
                                 databuf,
                                 args.out,
                                 lock,
-                                record_ind,
+                                pc_info,
                                 cyc_count,
-                                enroll_ind))
+                                evb_info))
     proc_draw.start()
     proc_evb2pc.start()
     # monitor if program should be terminated

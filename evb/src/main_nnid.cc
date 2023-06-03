@@ -38,7 +38,7 @@ bool volatile static g_audioRecording = false;
 /// app when the buffer has been consumed.
 bool volatile static g_audioReady = false;
 /// Audio buffer for application
-int16_t static g_in16AudioDataBuffer[(LEN_STFT_HOP << 1) + 10];
+int16_t static g_in16AudioDataBuffer[(LEN_STFT_HOP << 1) + 20];
 uint32_t static audadcSampleBuffer[(LEN_STFT_HOP << 1) + 3];
 
 typedef enum
@@ -163,13 +163,13 @@ const ns_power_config_t ns_lp_audio = {
 
 int main(void) {
     nnidCntrlClass cntrl_inst;
-    float corr;
+    float corr_array[5];
     int16_t corr_int;
     int16_t detected;
     int16_t *pt_debug;
-    int16_t *pt_enroll = g_in16AudioDataBuffer + (LEN_STFT_HOP << 1);
-    int16_t *pt_acc_num_enroll = pt_enroll + 1;
-    int16_t *pt_corr = pt_acc_num_enroll + 1;
+    int16_t *pt_acc_num_enroll = g_in16AudioDataBuffer + (LEN_STFT_HOP << 1);
+    int16_t *pt_is_result = pt_acc_num_enroll + 1;
+    int16_t *pt_corr = pt_is_result + 1;
     g_audioRecording = false;
     ns_core_init();
     // ns_power_config(&ns_lp_audio);
@@ -189,7 +189,7 @@ int main(void) {
 
     // initialize neural nets controller
     nnidCntrlClass_init(&cntrl_inst);
-
+    nnidCntrlClass_resetPcmBufClass(&cntrl_inst);
 #ifdef DEF_ACC32BIT_OPT
     ns_lp_printf("You are using \"32bit\" accumulator.\n");
 #else
@@ -226,6 +226,11 @@ int main(void) {
             ns_rpc_data_computeOnPC(&computeBlock, &IsRecordBlock); 
             if (IsRecordBlock.buffer.data[0]==button_start)
             {
+                ns_printf("Start button pressed!   \n");
+                cntrl_inst.id_enroll_ppl=IsRecordBlock.buffer.data[1];
+                cntrl_inst.total_enroll_ppls=IsRecordBlock.buffer.data[2];
+                cntrl_inst.enroll_state = (enroll_state_T) IsRecordBlock.buffer.data[3];
+                
                 // if button pressed, break the loop
                 g_intButtonPressed = 1;
                 ns_rpc_data_clientDoneWithBlockFromPC(&IsRecordBlock);
@@ -252,16 +257,26 @@ int main(void) {
                     detected = nnidCntrlClass_exec(
                         &cntrl_inst,
                         g_in16AudioDataBuffer,
-                        &corr);
+                        corr_array);
                     
                     // prepare information and send to PC side
-                    *pt_enroll = (int16_t) cntrl_inst.enroll_state;
                     *pt_acc_num_enroll = (int16_t) cntrl_inst.acc_num_enroll;
-                    *pt_corr = (int16_t) (corr * 32768.0f);
-                    corr_int = (detected) ? (int16_t) (corr * 32768.0f) : 0; 
+                    *pt_is_result = 0;
+                    corr_int = 0;
+                    if (cntrl_inst.enroll_state == test_phase)
+                    {
+                        if (detected)
+                        {
+                            *pt_is_result = 1;
+                            for (int i=0; i < cntrl_inst.total_enroll_ppls; i++)
+                                pt_corr[i] = (int16_t) (corr_array[i] * 32768.0f);
+                            corr_int = 0x7fff >> 1;
+                        }
+                    }
+                    
                     pt_debug = g_in16AudioDataBuffer + LEN_STFT_HOP;
                     for (int i = 0; i < LEN_STFT_HOP; i++)
-                            *pt_debug++ = corr_int;
+                        *pt_debug++ = corr_int;
 #ifdef DEF_GUI_ENABLE
                     ns_rpc_data_sendBlockToPC(&pcmBlock); // send data to PC sice
                     ns_rpc_data_computeOnPC(&computeBlock, &IsRecordBlock); // receive data from PC side
@@ -271,6 +286,7 @@ int main(void) {
                         g_audioRecording = false;
                         g_audioReady = false;
                         g_intButtonPressed = 0;
+                        ns_printf("Stop button pressed!   \n");
                         ns_rpc_data_clientDoneWithBlockFromPC(&IsRecordBlock);
                         break;
                     }

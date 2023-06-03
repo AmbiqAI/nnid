@@ -22,10 +22,12 @@ typedef struct
 	enroll_state_T enroll_state;
 	int8_t acc_num_enroll;
 	int8_t num_enroll;
+	int8_t id_enroll_ppl;
+	int8_t total_enroll_ppls;
 }nnidCntrlClass;
 
 void nnidCntrlClass_reset(nnidCntrlClass* pt_inst);
-
+void nnidCntrlClass_resetPcmBufClass(nnidCntrlClass* pt_inst);
 void nnidCntrlClass_init(nnidCntrlClass *pt_inst);
 
 int16_t nnidCntrlClass_exec(

@@ -25,7 +25,7 @@
 #include <stdio.h>
 #endif
 int16_t glob_se_out[160];
-int32_t embd_nnid[64] = {
+int32_t embd_nnid[64*5] = {
         -1628, -1539, -4392,  -560,   408, -7558,  1119,  5851, -1103,
         8611,  -416,  5804, -4506, -2787, -1700,  4906,  2866,  1750,
         -235, -5588,  1712,  6512, -5315,  1418, -3975, -4423, -2045,
@@ -40,8 +40,9 @@ NNID_CLASS state_nnid = {
     .dim_embd=64,
     .is_get_corr = 0,
     .thresh_get_corr = 179,
+    .total_enroll_ppls = 0,
     .thresh_trigger=0.8,
-    .corr = 0,
+    .corr = {0, 0, 0, 0, 0},
 };
 int32_t glob_nn_output[512];
 int NNSPClass_init(
@@ -114,6 +115,7 @@ int16_t NNSPClass_get_nn_out(int32_t* output, int len)
     {
         output[i] = glob_nn_output[i];
     }
+    return 0;
 }
 
 int16_t NNSPClass_exec(
@@ -171,7 +173,8 @@ int16_t NNSPClass_exec(
                     glob_nn_output,
                     pt_nnid->pt_embd,
                     pt_nnid->dim_embd,
-                    &pt_nnid->corr);
+                    pt_nnid->total_enroll_ppls,
+                    pt_nnid->corr);
             break;
 
         case se_id:
