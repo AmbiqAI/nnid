@@ -524,7 +524,7 @@ if __name__ == "__main__":
     argParser.add_argument(
         "-w",
         "--tty",
-        default = "COM4", # "/dev/tty.usbmodem1234561"
+        default = "/dev/tty.usbmodem1234561", # "/dev/tty.usbmodem1234561"
         help    = "Serial device (default value is None)",
     )
     argParser.add_argument(
