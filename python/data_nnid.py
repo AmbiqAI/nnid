@@ -22,7 +22,7 @@ from nnsp_pack import add_noise
 from nnsp_pack import boto3_op
 from nnsp_pack.download_data import download_data
 
-DEBUG = True
+DEBUG = False
 UPLOAD_TFRECORD_S3 = False
 DOWLOAD_DATA = False
 MAX_FRAMES = 180
