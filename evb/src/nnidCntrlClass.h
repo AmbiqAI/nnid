@@ -26,6 +26,7 @@ typedef struct
 	int8_t total_enroll_ppls;
 }nnidCntrlClass;
 
+void nnidCntrlClass_speed_testing(nnidCntrlClass* pt_inst, int16_t *rawPCM);
 void nnidCntrlClass_reset(nnidCntrlClass* pt_inst);
 void nnidCntrlClass_resetPcmBufClass(nnidCntrlClass* pt_inst);
 void nnidCntrlClass_init(nnidCntrlClass *pt_inst);

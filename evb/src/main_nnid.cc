@@ -211,7 +211,7 @@ int main(void) {
 
     // tflite_init();
     // test_tflite();
-    
+    nnidCntrlClass_speed_testing(&cntrl_inst, g_in16AudioDataBuffer);
     while (1) 
     {
         g_audioRecording = false;

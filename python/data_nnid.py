@@ -31,10 +31,8 @@ NUM_GROUP_PPLS = 64
 NOISE_TYPES = [
         'ESC-50-MASTER',
         'wham_noise',
-        # "social_noise",
         'FSD50K',
         'musan',
-        # 'traffic'
         ]
 if DEBUG:
     SNR_DBS_MIN_MAX = [100]

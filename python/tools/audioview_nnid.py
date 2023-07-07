@@ -425,7 +425,7 @@ class VisualDataClass:
                     id_max_corr = np.argmax(corr)
                     max_corr = float(corr[id_max_corr]) / 32768.0
                     if max_corr > self.thres_nnid:
-                        self.title_handle.set_text(f"{enroll_id2name[id_max_corr]} is verified: corr = {max_corr:.2f}") # pylint: disable=line-too-long
+                        self.title_handle.set_text(f"{enroll_id2name[id_max_corr]} is verified") # pylint: disable=line-too-long
                     else:
                         self.title_handle.set_text(f"Unknown: corr = {max_corr:.2f}")
                     info = "Testing info:\n"

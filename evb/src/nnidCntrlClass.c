@@ -8,11 +8,42 @@
 #include "PcmBufClass.h"
 #include "nnidCntrlClass.h"
 #include <math.h>
+#include "ns_timer.h"
 FeatureClass feat_vad, feat_nnid;
 NNSPClass nnst_vad, nnst_nnid;
 PcmBufClass pcmBuf_inst;
 int16_t glob_th_prob = 0x7fff >> 1;
 int16_t glob_count_trigger = 1;
+// Model Stuff
+ns_timer_config_t tickTimer = {
+    .prefix = {0},
+    .timer = NS_TIMER_COUNTER,
+    .enableInterrupt = false,
+};
+
+void nnidCntrlClass_speed_testing(nnidCntrlClass* pt_inst, int16_t *rawPCM)
+{
+	int fr;
+	uint32_t elapsed_time;
+	int NUM_FRAMES = 100;
+	nnidCntrlClass_reset(pt_inst);
+    ns_timer_init(&tickTimer);
+	
+	for (fr = 0; fr < NUM_FRAMES; fr++)
+		NNSPClass_exec(&nnst_vad, rawPCM);
+	elapsed_time = ns_us_ticker_read(&tickTimer);
+	ns_lp_printf("vad:\n"); 
+    ns_lp_printf("nn: %3.2f ms/inference\n",
+                ((float) elapsed_time) / NUM_FRAMES / 1000);
+
+	ns_timer_init(&tickTimer);
+	for (fr = 0; fr < 180; fr++)
+		NNSPClass_exec(&nnst_nnid, rawPCM);
+	elapsed_time = ns_us_ticker_read(&tickTimer);
+	ns_lp_printf("nnid:\n"); 
+    ns_lp_printf("nn: %3.2f ms/inference\n",
+                ((float) elapsed_time) / NUM_FRAMES / 1000);
+}
 
 void nnidCntrlClass_reset(nnidCntrlClass* pt_inst)
 {
